@@ -2,7 +2,7 @@
 
 python ../agents/C_trajectory_following.py \
     --gui "True" \
-    --output_folder "../weights" \
+    --output_folder "../checkpointed_models" \
     --timesteps 2500000 \
     --train "False" \
     --test "False" \

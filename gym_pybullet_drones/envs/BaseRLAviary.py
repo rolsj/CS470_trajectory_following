@@ -105,6 +105,13 @@ class BaseRLAviary(BaseAviary):
         Overrides BaseAviary's method.
 
         """
+        urdf_path = os.path.join(os.path.dirname(__file__), "../assets/wall1.urdf")
+        self.obstacle_id = p.loadURDF(urdf_path,
+               #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
+               useFixedBase=True,
+               physicsClientId=self.CLIENT
+               )
+        """
         if self.OBS_TYPE == ObservationType.RGB:
             p.loadURDF("block.urdf",
                        [1, 0, .1],
@@ -128,6 +135,7 @@ class BaseRLAviary(BaseAviary):
                        )
         else:
             pass
+        """
 
     ################################################################################
 
@@ -186,12 +194,16 @@ class BaseRLAviary(BaseAviary):
             commanded to the 4 motors of each drone.
 
         """
+        
         self.action_buffer.append(action)
         rpm = np.zeros((self.NUM_DRONES,4))
         for k in range(action.shape[0]):
             target = action[k, :]
             if self.ACT_TYPE == ActionType.RPM:
-                rpm[k,:] = np.array(self.HOVER_RPM * (1+0.05*target))
+                if np.all(target == 0):
+                    rpm[k,:] = np.zeros(4)  # 모든 RPM을 0으로 설정
+                else:
+                    rpm[k,:] = np.array(self.HOVER_RPM * (1 + 0.05 * target))
             elif self.ACT_TYPE == ActionType.PID:
                 state = self._getDroneStateVector(k)
                 next_pos = self._calculateNextStep(
@@ -236,21 +248,24 @@ class BaseRLAviary(BaseAviary):
                                                         )
                 rpm[k,:] = res
             elif self.ACT_TYPE == ActionType.ATTITUDE_PID:
-                state = self._getDroneStateVector(k)
-                target_thrust = float(target[0])
-                target_thrust = np.array(self.HOVER_RPM * (1+0.05*target_thrust))
-                target_rpy_rates = target[1:4]
-                res, _, _ = self.ctrl[k].computeControl(
-                    control_timestep=self.CTRL_TIMESTEP,
-                    cur_pos=state[0:3],
-                    cur_quat=state[3:7],
-                    cur_vel=state[10:13],
-                    cur_ang_vel=state[13:16],
-                    target_pos=state[0:3],
-                    target_rpy_rates=target_rpy_rates,
-                    target_thrust=target_thrust
-                )
-                rpm[k,:] = res
+                if np.all(target == 0):
+                    rpm[k, :] = np.zeros(4)  # 모든 RPM을 0으로 설정
+                else:
+                    state = self._getDroneStateVector(k)
+                    target_thrust = float(target[0])
+                    target_thrust = np.array(self.HOVER_RPM * (1+0.05*target_thrust))
+                    target_rpy_rates = target[1:4]
+                    res, _, _ = self.ctrl[k].computeControl(
+                        control_timestep=self.CTRL_TIMESTEP,
+                        cur_pos=state[0:3],
+                        cur_quat=state[3:7],
+                        cur_vel=state[10:13],
+                        cur_ang_vel=state[13:16],
+                        target_pos=state[0:3],
+                        target_rpy_rates=target_rpy_rates,
+                        target_thrust=target_thrust
+                    )
+                    rpm[k,:] = res
             else:
                 print("[ERROR] in BaseRLAviary._preprocessAction()")
                 exit()

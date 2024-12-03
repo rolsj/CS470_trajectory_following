@@ -67,6 +67,33 @@ def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:
         json.dump(benchmarks, file)
 
+def generate_parabolic_trajectory(z_start, x_land, num_points=50):
+    """
+    Generate waypoints for a parabolic trajectory.
+    
+    Parameters:
+        z_start (float): Starting height (a > 0)
+        x_land (float): x-coordinate of the landing point
+        num_points (int): Number of waypoints in the trajectory
+        
+    Returns:
+        waypoints (list of tuples): List of (x, y, z) waypoints
+    """
+    # Coefficients for the parabola
+    a = -z_start / (x_land**2)  # Ensures z(x_land) = 0
+    b = 0                      # Symmetric parabola
+    c = z_start                # Starting height
+    
+    # Generate x values
+    x_values = np.linspace(0, x_land, num_points)
+    
+    # Calculate z values for the trajectory
+    z_values = a * x_values**2 + b * x_values + c
+    
+    # Generate waypoints
+    waypoints = [(x, 0, z) for x, z in zip(x_values, z_values)]
+    
+    return waypoints
 
 def init_targets():
     points_per_segment = 4
@@ -77,10 +104,11 @@ def init_targets():
         [[0, (1 / points_per_segment) * i, 1] for i in range(1, points_per_segment + 1)]
     )
     x_segment = np.array(
-        [[(1 / points_per_segment) * i, 1, 1] for i in range(1, points_per_segment + 1)]
+        [[0, 1, 1 - ((1 / points_per_segment) * i)] for i in range(1, points_per_segment + 1)]
     )
     initial_xyzs = np.array([[0.0, 0.0, 1.0]])
-    pts = np.vstack([initial_xyzs, z_segment, y_segment, x_segment])
+    pts = np.vstack([initial_xyzs, y_segment, x_segment])
+    pts = generate_parabolic_trajectory(1,1,10)
     t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
     t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     return t_traj, initial_xyzs

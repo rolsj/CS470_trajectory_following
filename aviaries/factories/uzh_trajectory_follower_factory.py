@@ -32,7 +32,7 @@ class TrajectoryFollowerAviaryFactory(BaseFactory):
         use_gui_for_test_env: bool = True,
         n_env_training: int = 20,
         seed: int = 0,
-        single_traj=False,
+        single_traj=True,
         eval_mode=False,
     ) -> None:
         super().__init__()

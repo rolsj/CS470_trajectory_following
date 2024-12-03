@@ -43,6 +43,30 @@ def test_simple_follower(
     for i in range((test_env.EPISODE_LEN_SEC) * test_env.CTRL_FREQ):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = test_env.step(action)
+
+        # 드론의 현재 위치와 목표 위치 계산
+        current_position = test_env._getDroneStateVector(0)[:3]
+        target_position = test_env.trajectory[-1]
+        distance_to_target = np.linalg.norm(current_position - target_position)
+
+        # 자유 낙하 조건
+        if distance_to_target < 0.1:  # 목적지와 0.5m 이내로 접근하면
+            print("Entering free fall...")
+            current_z = test_env._getDroneStateVector(0)[2]
+            print(current_z)
+            while current_z > 0.0:  # 자유 낙하 루프
+                action = np.zeros_like(action)  # 모든 제어 신호를 0으로 설정
+                obs, reward, terminated, truncated, info = test_env.step(action)
+
+                # 드론의 현재 z좌표 확인
+                current_z = test_env._getDroneStateVector(0)[2]  # z좌표 (x=0, y=1, z=2)
+
+                # z좌표가 0 이하로 떨어지면 자유 낙하 종료
+
+                # 중간 지연을 추가해 시뮬레이션 속도 조절
+            time.sleep(10)
+            break  # 루프 종료 (필요 시)
+
         obs2 = obs.squeeze()
         act2 = action.squeeze()
         # print("Obs:", obs, "\tAction", action, "\tReward:", reward, "\tTerminated:", terminated, "\tTruncated:", truncated)
@@ -72,7 +96,7 @@ def test_simple_follower(
             obs = test_env.reset(seed=42, options={})
             break
     test_env.close()
-
+    print("here1")
     logger.plot()
     return None, False, None
 

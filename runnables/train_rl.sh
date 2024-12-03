@@ -3,7 +3,7 @@
 python ../agents/C_trajectory_following.py \
     --gui "True" \
     --output_folder "./weights" \
-    --timesteps 2500000 \
+    --timesteps 100000 \
     --train "True" \
     --test "False" \
     --vis "False" \
