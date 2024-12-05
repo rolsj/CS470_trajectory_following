@@ -1,4 +1,4 @@
-from gym_pybullet_drones.envs.BaseRLAviary import BaseRLAviary
+from gym_pybullet_drones.envs.WheelPropRLAviary import WheelPropRLAviary
 from gym_pybullet_drones.utils.enums import (
     DroneModel,
     Physics,
@@ -37,7 +37,7 @@ refreshed_text = lambda txt, client_id, replace_id: p.addUserDebugText(
 )
 
 
-class UZHAviary(BaseRLAviary):
+class UZHAviary(WheelPropRLAviary):
     """Single agent RL problem: hover at position."""
 
     ################################################################################
