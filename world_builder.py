@@ -10,7 +10,7 @@ def get_urdf(h1, h2, l):
     <link name="box1_link">
         <visual>
             <geometry>
-                <box size="1 1 {h1}" />
+                <box size="0.1 1 {h1}" />
             </geometry>
             <origin xyz="0 0 {h1 / 2}" />
             <material name="blue">
@@ -19,7 +19,7 @@ def get_urdf(h1, h2, l):
         </visual>
         <collision>
             <geometry>
-                <box size="1 1 {h1}" />
+                <box size="0.1 1 {h1}" />
             </geometry>
             <origin xyz="0 0 {h1 / 2}" />
         </collision>
@@ -34,23 +34,23 @@ def get_urdf(h1, h2, l):
     <link name="box2_link">
         <visual>
             <geometry>
-                <box size="1 1 {h2}" />
+                <box size="0.1 1 {h2}" />
             </geometry>
-            <origin xyz="0 0 {l + h2 / 2}" />
+            <origin xyz="{l} 0 {h2 / 2}" />
             <material name="red">
                 <color rgba="1 0 0 1" />
             </material>
         </visual>
         <collision>
             <geometry>
-                <box size="1 1 {h2}" />
+                <box size="0.1 1 {h2}" />
             </geometry>
-            <origin xyz="0 0 {l + h2 / 2}" />
+            <origin xyz="{l} 0 {h2 / 2}" />
         </collision>
         <inertial>
             <mass value="1.0" />
             <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1" />
-            <origin xyz="0 0 {l + h2 / 2}" />
+            <origin xyz="{l} 0 {h2 / 2}" />
         </inertial>
     </link>
 </robot>
@@ -83,7 +83,7 @@ def build_world(filename, batch, n, h1, h2, l):
                 file.write(urdf_content)
     else:
         urdf_content = get_urdf(h1, h2, l)
-        with open(filename, "w") as file:
+        with open(f'{filename}.urdf', "w") as file:
             file.write(urdf_content)
     print(f"URDF file '{filename}' created successfully!")
 

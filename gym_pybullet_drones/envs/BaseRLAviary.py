@@ -105,12 +105,12 @@ class BaseRLAviary(BaseAviary):
         Overrides BaseAviary's method.
 
         """
-        #urdf_path = os.path.join(os.path.dirname(__file__), "../assets/world.urdf")
-        #self.obstacle_id = p.loadURDF(urdf_path,
-        #       #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
-        #       useFixedBase=True,
-        #       physicsClientId=self.CLIENT
-        #       )
+        urdf_path = os.path.join(os.path.dirname(__file__), "../assets/world.urdf")
+        self.obstacle_id = p.loadURDF(urdf_path,
+               #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
+               useFixedBase=True,
+               physicsClientId=self.CLIENT
+               )
         pass
 
     ################################################################################
