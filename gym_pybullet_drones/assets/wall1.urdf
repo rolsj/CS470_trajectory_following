@@ -14,7 +14,7 @@
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <!-- 얇은 보드 -->
-        <box size="1 1 2" />
+        <box size="0.3 0.3 2" />
       </geometry> 
       <material name="blue">
         <color rgba="0.0 0.0 0.1 0.1"/>
@@ -24,7 +24,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <box size="1 1 2" />
+        <box size="0.3 0.3 2" />
       </geometry>
     </collision>  
 

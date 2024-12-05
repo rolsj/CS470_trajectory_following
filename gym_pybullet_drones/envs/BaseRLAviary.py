@@ -111,6 +111,14 @@ class BaseRLAviary(BaseAviary):
                useFixedBase=True,
                physicsClientId=self.CLIENT
                )
+        #urdf_path1 = os.path.join(os.path.dirname(__file__), "../assets/wall2.urdf")
+        """
+        self.obstacle_id = p.loadURDF(urdf_path1,
+               #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
+               useFixedBase=True,
+               physicsClientId=self.CLIENT
+               )
+        """
         """
         if self.OBS_TYPE == ObservationType.RGB:
             p.loadURDF("block.urdf",
