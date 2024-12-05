@@ -67,7 +67,7 @@ def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:
         json.dump(benchmarks, file)
 
-def generate_parabolic_trajectory(x_point, z_start, x_land, num_points):
+def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
     """
     Generate waypoints for a parabolic trajectory.
     
@@ -94,18 +94,21 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, num_points):
     x_values = np.linspace(0, x_land, num_points)
     
     # Calculate z values for the trajectory
-    z_values = a * (x_values)**2 + b*(x_values)+ c
+    z_values = a * (x_values)**2 + b*(x_values) + c
     
     # Generate waypoints
-    waypoints = [(x+x_point, 0, z) for x, z in zip(x_values, z_values)]
+    if up:
+        waypoints = [(x_point-x, 0, z) for x, z in zip(x_values, z_values)]
+    else:
+        waypoints = [(x_point+x, 0, z) for x, z in zip(x_values, z_values)]
     
     return waypoints
 
 def init_targets(x_point, z_start, x_land, num_points, up):
-    pts = generate_parabolic_trajectory(x_point,z_start,x_land,num_points)
+    pts = generate_parabolic_trajectory(x_point,z_start,x_land,num_points,up)
     if up:
         pts = pts[::-1]
-    initial_xyzs = pts[0]
+    initial_xyzs = np.array([pts[0]])
     t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
     t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     return t_traj, initial_xyzs
@@ -163,7 +166,7 @@ def run(
         run_train(config=config, env_factory=env_factory)
 
     if vis:
-        run_test(config=config, env_factory=env_factory)
+        run_test(t_traj1, config=config, env_factory=env_factory)
 
     if test:
         env_factory.single_traj = True
