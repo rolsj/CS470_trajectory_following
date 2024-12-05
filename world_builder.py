@@ -89,12 +89,12 @@ def build_world(filename, batch, n, h1, h2, l):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--filename', default="world", type=str, metavar='')
-    parser.add_argument('--batch', default=False, type=str2bool, metavar='')
-    parser.add_argument('--n', default=5, type=int, metavar='')
-    parser.add_argument('--h1', default=1.0, type=float, metavar='')
-    parser.add_argument('--h2', default=1.0, type=float, metavar='')
-    parser.add_argument('--l', default=3.0, type=float, metavar='')
+    parser.add_argument('--filename', default="world", type=str, help='directory for the output .urdf file', metavar='')
+    parser.add_argument('--batch', default=False, type=str2bool, help='whether to use randomized batch generation', metavar='')
+    parser.add_argument('--n', default=5, type=int, help='the size of batch when batch=true', metavar='')
+    parser.add_argument('--h1', default=1.0, type=float, help='h1, if batch=fasle', metavar='')
+    parser.add_argument('--h2', default=1.0, type=float, help='h2, if batch=fasle', metavar='')
+    parser.add_argument('--l', default=3.0, type=float, help='l, if batch=fasle', metavar='')
     ARGS = parser.parse_args()
 
     build_world(**vars(ARGS))
