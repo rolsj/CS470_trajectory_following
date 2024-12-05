@@ -40,6 +40,9 @@ def test_simple_follower(
 
     obs, info = test_env.reset(seed=42, options={})
     start = time.time()
+    time_period = 1 / test_env.CTRL_FREQ
+    rpm_prev = np.zeros((test_env.NUM_DRONES, 4))
+    acc_cum = 0.
     for i in range((test_env.EPISODE_LEN_SEC) * test_env.CTRL_FREQ):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = test_env.step(action)
@@ -48,6 +51,11 @@ def test_simple_follower(
         current_position = test_env._getDroneStateVector(0)[:3]
         target_position = test_env.trajectory[-1]
         distance_to_target = np.linalg.norm(current_position - target_position)
+
+        rpm = np.reshape(test_env._preprocessAction(action), (test_env.NUM_DRONES, 4))
+        rpm_acc = rpm - rpm_prev
+        rpm_prev = rpm
+        acc_cum += time_period * rpm_acc / 60.
 
         # 자유 낙하 조건
         if distance_to_target < 0.1:  # 목적지와 0.5m 이내로 접근하면
@@ -97,6 +105,7 @@ def test_simple_follower(
             break
     test_env.close()
     print("here1")
+    print("[total rpm_acc]", rpm_acc)
     logger.plot()
     return None, False, None
 
