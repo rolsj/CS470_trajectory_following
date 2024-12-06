@@ -175,14 +175,18 @@ def run(
         raise Exception("FLIGHT mode trajectory not yet made")
     else: # Drive mode
         t_traj, init_wp = init_targets(0,1,1,5,False)
-        t_traj1, init_wp1 = init_targets(2,1,1,5,True)
+        t_traj2, init_wp2 = init_targets(2,1,1,5,True)
+        
+        # 두 궤적의 waypoint들을 합치기
+        combined_waypoints = t_traj.wps + t_traj2.wps
+        combined_traj = TrajectoryFactory.get_discr_from_wps(combined_waypoints)
 
     config = Configuration(
         action_type=ACT,
         initial_xyzs=init_wp,
         output_path_location=output_folder,
         n_timesteps=timesteps,
-        t_traj=t_traj,
+        t_traj=combined_traj,
         local=True,
         episode_len_sec=episode_len_sec,
         waypoint_buffer_size=waypoint_buffer_size,
@@ -211,7 +215,7 @@ def run(
             k_s,
             max_reward_distance,
             waypoint_dist_tol,
-            t_traj1, config=config, env_factory=env_factory)
+            t_traj2, config=config, env_factory=env_factory)
 
     if test:
         env_factory.single_traj = True
@@ -232,7 +236,7 @@ def run(
                 k_s,
                 max_reward_distance,
                 waypoint_dist_tol,
-                t_traj1, config=config, env_factory=env_factory, eval_mode=True
+                t_traj2, config=config, env_factory=env_factory, eval_mode=True
             )
             successes.append(success)
             if success:
