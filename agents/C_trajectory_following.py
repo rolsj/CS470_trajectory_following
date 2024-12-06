@@ -6,6 +6,7 @@ Script learns an agent for trajectory following. Policy strongly inspired by [1]
 """
 
 import argparse
+import sympy as sp
 import numpy as np
 from gym_pybullet_drones.utils.utils import str2bool
 from gym_pybullet_drones.utils.enums import ObservationType, ActionType
@@ -116,10 +117,11 @@ def find_a_and_b(h1, h2, l, max_height):
     b_value = sp.solve(eq1, b)  # Solve for b
     
     # Choose a valid solution
-    b_value = [val for val in b_value if val.is_real]
+    b_value = [val for val in b_value if val.is_real and 0 <= val <= l]
+    """
     if len(b_value) != 1:
         raise ValueError("No unique solution for b found!")
-    
+    """
     b_value = b_value[0]
     a_value = (h1 - max_height) / b_value**2  # Solve for a
     
@@ -204,24 +206,22 @@ def run(
     assert 0 <= selected_idx < 2
 
     ##### Set waypoints depending on the selected strategy #####
-    if selected_idx == 0: # Flight mode
-        raise Exception("FLIGHT mode trajectory not yet made")
-        generate_parabolic_trajectory_aviation(1,1,2,0.1,10)
-        t_traj1 = None
+    if True: # Flight mode
+        #raise Exception("FLIGHT mode trajectory not yet made")
+        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1,4)
+        print("here")
+        print(t_traj)
+        t_traj2 = None
     else: # Drive mode
         t_traj, init_wp = init_targets(0,1,1,5,False)
         t_traj2, init_wp2 = init_targets(2,1,1,5,True)
-        
-        # 두 궤적의 waypoint들을 합치기
-        combined_waypoints = t_traj.wps + t_traj2.wps
-        combined_traj = TrajectoryFactory.get_discr_from_wps(combined_waypoints)
 
     config = Configuration(
         action_type=ACT,
         initial_xyzs=init_wp,
         output_path_location=output_folder,
         n_timesteps=timesteps,
-        t_traj=combined_traj,
+        t_traj=t_traj,
         local=True,
         episode_len_sec=episode_len_sec,
         waypoint_buffer_size=waypoint_buffer_size,

@@ -22,7 +22,7 @@ def test_simple_follower(
     k_s,
     max_reward_distance,
     waypoint_dist_tol,
-    t_traj3=None,
+    t_traj3,
     local: bool,
     filename: str,
     test_env: UZHAviary,
