@@ -111,6 +111,14 @@ class BaseRLAviary(BaseAviary):
                useFixedBase=True,
                physicsClientId=self.CLIENT
                )
+
+        urdf_path2 = os.path.join(os.path.dirname(__file__), "../assets/wall2.urdf")  # 다른 URDF 파일 또는 동일 파일 사용
+        self.obstacle_id2 = p.loadURDF(
+            urdf_path2,
+            #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
+            useFixedBase=True,
+            physicsClientId=self.CLIENT
+        )
         #urdf_path1 = os.path.join(os.path.dirname(__file__), "../assets/wall2.urdf")
         """
         self.obstacle_id = p.loadURDF(urdf_path1,

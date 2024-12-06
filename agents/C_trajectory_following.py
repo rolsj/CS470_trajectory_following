@@ -166,7 +166,13 @@ def run(
         run_train(config=config, env_factory=env_factory)
 
     if vis:
-        run_test(t_traj1, config=config, env_factory=env_factory)
+        run_test(
+            k_p,
+            k_wp,
+            k_s,
+            max_reward_distance,
+            waypoint_dist_tol,
+            t_traj1, config=config, env_factory=env_factory)
 
     if test:
         env_factory.single_traj = True
@@ -182,6 +188,11 @@ def run(
             config.update_trajectory(t_traj, init_wp)
             env_factory.set_config(config)
             visited_positions, success, time = run_test(
+                k_p,
+                k_wp,
+                k_s,
+                max_reward_distance,
+                waypoint_dist_tol,
                 t_traj1, config=config, env_factory=env_factory, eval_mode=True
             )
             successes.append(success)

@@ -14,12 +14,18 @@ import time
 import numpy as np
 from gym_pybullet_drones.utils.utils import sync
 
+from aviaries.rewards.uzh_trajectory_reward import Rewards
 
 def test_simple_follower(
+    k_p,
+    k_wp,
+    k_s,
+    max_reward_distance,
+    waypoint_dist_tol,
     t_traj3,
     local: bool,
     filename: str,
-    test_env: BaseRLAviary,
+    test_env: UZHAviary,
     output_folder: str,
     eval_mode=False,
 ):
@@ -88,12 +94,22 @@ def test_simple_follower(
             break
     
     test_env.current_waypoint_idx = 0
-    test_env.rewards.reached_distance = 0
+    #test_env.rewards.reached_distance = 0
 
     test_env.single_traj = t_traj3
 
     test_env.trajectory = test_env.set_trajectory()
     test_env.self_trajectory = test_env.set_trajectory()
+
+    test_env.rewards = Rewards(
+        trajectory=test_env.trajectory,
+        k_p=k_p,
+        k_wp=k_wp,
+        k_s=k_s,
+        max_reward_distance=max_reward_distance,
+        dist_tol=waypoint_dist_tol,
+    )
+
     test_env.rewards.reset(test_env.self_trajectory)
 
     test_env.furthest_reached_waypoint_idx = 0
@@ -108,6 +124,7 @@ def test_simple_follower(
     print(test_env.trajectory)
     print(test_env.trajectory[-1])
     print("here1")
+    
     for i in range((test_env.EPISODE_LEN_SEC) * test_env.CTRL_FREQ):
         # 드론의 현재 위치와 목표 위치 계산
         current_position = test_env._getDroneStateVector(0)[:3]
@@ -155,18 +172,29 @@ def test_simple_follower(
                 return all_pos, success, t
             obs = test_env.reset(seed=42, options={})
             break
-    print("here2")
+    time.sleep(10)
     test_env.close()
     logger.plot()
     return None, False, None
 
-def run_test(t_traj1, config: Configuration, env_factory: BaseFactory, eval_mode=False):
+def run_test(
+    k_p,
+    k_wp,
+    k_s,
+    max_reward_distance,
+    waypoint_dist_tol,
+    t_traj1, config: Configuration, env_factory: BaseFactory, eval_mode=False):
     if not eval_mode:
         test_env = env_factory.get_test_env_gui()
     else:
         test_env = env_factory.get_test_env_no_gui()
 
     eval_res = test_simple_follower(
+        k_p,
+        k_wp,
+        k_s,
+        max_reward_distance,
+        waypoint_dist_tol,
         t_traj1,
         local=config.local,
         filename=config.output_path_location,
