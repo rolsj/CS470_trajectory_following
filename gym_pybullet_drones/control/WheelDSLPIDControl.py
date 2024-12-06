@@ -25,8 +25,8 @@ class WheelDSLPIDControl(DSLPIDControl):
         self.integral_x_error = 0
         
         # 바닥 감지를 위한 임계값 추가
-        self.GROUND_THRESHOLD = 0.05  # 바닥으로부터의 높이 임계값 (미터)
-        self.Z_MOVEMENT_THRESHOLD = 0.05  # z축 이동 감지 임계값
+        self.GROUND_THRESHOLD = 0.03  # 바닥으로부터의 높이 임계값 (미터)
+        self.Z_MOVEMENT_THRESHOLD = 0.03  # z축 이동 감지 임계값
         
     def computeControl(self,
                       control_timestep,

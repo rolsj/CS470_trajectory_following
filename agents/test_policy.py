@@ -90,7 +90,7 @@ def test_simple_follower(
 
             if distance_to_target < 0.1:
                 action = np.zeros_like(action)
-                while not np.allclose(current_position[2], target_position[2], atol=0.015):
+                while not np.allclose(current_position[2], target_position[2], atol=0.05):
                     obs, reward, terminated, truncated, info = test_env.step(action)
                     current_position = test_env._getDroneStateVector(0)[:3]
                 print("Current trajectory completed")
