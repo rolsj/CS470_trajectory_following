@@ -23,6 +23,9 @@ from tqdm import tqdm
 import json
 from runnables.utils.utils import compute_metrics_single
 
+from agents.regression import Regression
+import os
+
 ###### INFRASTRUCTURE PARAMS #######
 GUI = True
 RECORD_VIDEO = False
@@ -113,6 +116,34 @@ def init_targets(x_point, z_start, x_land, num_points, up):
     t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     return t_traj, initial_xyzs
 
+def determine_strategy(h1, h2, l) -> tuple[int, float]:
+    data_dir = "./agents/train_data"
+    with open(os.path.join(data_dir, "flight.json"), "r", encoding="utf-8") as f:
+        data = json.load(f)
+        x_train = np.array(data[0])
+        y_train = np.array(data[1])
+    model_flight = Regression()
+    model_flight.train_with(x_train, y_train)
+    
+    with open(os.path.join(data_dir, "drive.json"), "r", encoding="utf-8") as f:
+        data = json.load(f)
+        x_train = np.array(data[0])
+        y_train = np.array(data[1])
+    model_drive = Regression()    
+    model_drive.train_with(x_train, y_train)
+
+    expected_cost_flight = model_flight.predict(np.array([[h1, h2, l]]))
+    expected_cost_drive = model_drive.predict(np.array([[h1, h2, l]]))
+    print(f"Expected cost (energy) when flight: {expected_cost_flight}")
+    print(f"Expected cost (energy) when drive: {expected_cost_drive}")
+
+    if expected_cost_flight < expected_cost_drive:
+        print("flight selected")
+        return (0, expected_cost_flight)
+    else:
+        print("drive selected")
+        return (1, expected_cost_drive)
+
 def run(
     output_folder=OUTPUT_FOLDER,
     gui=GUI,
@@ -135,8 +166,16 @@ def run(
     output_folder = f"{output_folder}/wp_b={waypoint_buffer_size}_k_p={k_p}_k_wp={k_wp}_k_s={k_s}_max_reward_distance={max_reward_distance}_waypoint_dist_tol={waypoint_dist_tol}"
     print(f"Output folder: {output_folder}")
 
-    t_traj, init_wp = init_targets(0,1,1,5,False)
-    t_traj1, init_wp1 = init_targets(2,1,1,5,True)
+    ##### Use regression models to determine the strategy #####
+    selected_idx, expected_cost = determine_strategy(h1=5, h2=3, l=10)
+    assert 0 <= selected_idx < 2
+
+    ##### Set waypoints depending on the selected strategy #####
+    if selected_idx == 0: # Flight mode
+        raise Exception("FLIGHT mode trajectory not yet made")
+    else: # Drive mode
+        t_traj, init_wp = init_targets(0,1,1,5,False)
+        t_traj1, init_wp1 = init_targets(2,1,1,5,True)
 
     config = Configuration(
         action_type=ACT,
