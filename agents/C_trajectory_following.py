@@ -117,7 +117,7 @@ def init_targets(x_point, z_start, x_land, num_points, up):
     return t_traj, initial_xyzs
 
 def determine_strategy(h1, h2, l) -> tuple[int, float]:
-    data_dir = "./agents/train_data"
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_data")
     with open(os.path.join(data_dir, "flight.json"), "r", encoding="utf-8") as f:
         data = json.load(f)
         x_train = np.array(data[0])
