@@ -25,7 +25,7 @@ class WheelDSLPIDControl(DSLPIDControl):
         self.integral_x_error = 0
         
         # 바닥 감지를 위한 임계값 추가
-        self.GROUND_THRESHOLD = 0.1  # 바닥으로부터의 높이 임계값 (미터)
+        self.GROUND_THRESHOLD = 0.05  # 바닥으로부터의 높이 임계값 (미터)
         self.Z_MOVEMENT_THRESHOLD = 0.05  # z축 이동 감지 임계값
         
     def computeControl(self,
@@ -37,7 +37,8 @@ class WheelDSLPIDControl(DSLPIDControl):
                       target_pos,
                       target_rpy=np.zeros(3),
                       target_vel=np.zeros(3),
-                      target_rpy_rates=np.zeros(3)
+                      target_rpy_rates=np.zeros(3),
+                      target_thrust=None
                       ):
         """제어 입력 계산."""
         # 현재 상태 분석
@@ -61,18 +62,32 @@ class WheelDSLPIDControl(DSLPIDControl):
         # 프로펠러 제어 계산
         prop_rpms = np.zeros(4)
         if not is_near_ground or z_movement_required:
-            prop_rpms, _, _ = super().computeControl(
-                control_timestep=control_timestep,
-                cur_pos=cur_pos,
-                cur_quat=cur_quat,
-                cur_vel=cur_vel,
-                cur_ang_vel=cur_ang_vel,
-                target_pos=target_pos,
-                target_rpy=target_rpy,
-                target_vel=target_vel,
-                target_rpy_rates=target_rpy_rates
-            )
-        prop_rpms = prop_rpms
+            if target_thrust is None:
+                prop_rpms, _, _ = super().computeControl(
+                    control_timestep=control_timestep,
+                    cur_pos=cur_pos,
+                    cur_quat=cur_quat,
+                    cur_vel=cur_vel,
+                    cur_ang_vel=cur_ang_vel,
+                    target_pos=target_pos,
+                    target_rpy=target_rpy,
+                    target_vel=target_vel,
+                    target_rpy_rates=target_rpy_rates
+                )
+            else:
+                # target_thrust가 주어진 경우의 처리
+                prop_rpms, _, _ = super().computeControl(
+                    control_timestep=control_timestep,
+                    cur_pos=cur_pos,
+                    cur_quat=cur_quat,
+                    cur_vel=cur_vel,
+                    cur_ang_vel=cur_ang_vel,
+                    target_pos=target_pos,
+                    target_rpy=target_rpy,
+                    target_vel=target_vel,
+                    target_rpy_rates=target_rpy_rates,
+                    target_thrust=target_thrust
+                )
         
         return wheel_velocities, prop_rpms
 

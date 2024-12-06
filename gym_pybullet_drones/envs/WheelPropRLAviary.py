@@ -6,7 +6,7 @@ from collections import deque
 
 from gym_pybullet_drones.envs.WheelPropAviary import WheelPropAviary
 from gym_pybullet_drones.utils.enums import DroneModel, Physics, ActionType, ObservationType, ImageType
-from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
+from gym_pybullet_drones.control.WheelDSLPIDControl import WheelDSLPIDControl
 
 class WheelPropRLAviary(WheelPropAviary):
     """Base single and multi-agent environment class for reinforcement learning."""
@@ -74,7 +74,7 @@ class WheelPropRLAviary(WheelPropAviary):
         if act in [ActionType.PID, ActionType.VEL, ActionType.ONE_D_PID, ActionType.ATTITUDE_PID]:
             os.environ['KMP_DUPLICATE_LIB_OK']='True'
             if drone_model in [DroneModel.CF2X, DroneModel.CF2P]:
-                self.ctrl = [DSLPIDControl(drone_model=DroneModel.CF2X) for i in range(num_drones)]
+                self.ctrl = [WheelDSLPIDControl(drone_model=DroneModel.CF2X) for i in range(num_drones)]
             else:
                 print("[ERROR] in BaseRLAviary.__init()__, no controller is available for the specified drone_model")
         super().__init__(drone_model=drone_model,
@@ -95,6 +95,8 @@ class WheelPropRLAviary(WheelPropAviary):
         #### Set a limit on the maximum target speed ###############
         if act == ActionType.VEL:
             self.SPEED_LIMIT = 0.03 * self.MAX_SPEED_KMH * (1000/3600)
+        # wheel_velocities 프로퍼티 추가
+        self.wheel_velocities = np.zeros((self.NUM_DRONES, 4))
 
     ################################################################################
 
@@ -197,7 +199,7 @@ class WheelPropRLAviary(WheelPropAviary):
         
         self.action_buffer.append(action)
         rpm = np.zeros((self.NUM_DRONES,4))
-        wheel_velocities = np.zeros((self.NUM_DRONES,4))
+        self.wheel_velocities = np.zeros((self.NUM_DRONES, 4))
         for k in range(action.shape[0]):
             target = action[k, :]
             if self.ACT_TYPE == ActionType.RPM:
@@ -256,7 +258,7 @@ class WheelPropRLAviary(WheelPropAviary):
                     target_thrust = float(target[0])
                     target_thrust = np.array(self.HOVER_RPM * (1+0.05*target_thrust))
                     target_rpy_rates = target[1:4]
-                    res1, res2 = self.ctrl[k].computeControl(
+                    wheel_vels, prop_rpms = self.ctrl[k].computeControl(
                         control_timestep=self.CTRL_TIMESTEP,
                         cur_pos=state[0:3],
                         cur_quat=state[3:7],
@@ -266,12 +268,12 @@ class WheelPropRLAviary(WheelPropAviary):
                         target_rpy_rates=target_rpy_rates,
                         target_thrust=target_thrust
                     )
-                    rpm[k,:] = res2
-                    wheel_velocities[k,:] = res1
+                    rpm[k,:] = prop_rpms
+                    self.wheel_velocities[k,:] = wheel_vels
             else:
                 print("[ERROR] in BaseRLAviary._preprocessAction()")
                 exit()
-        return wheel_velocities, rpm
+        return rpm
 
     ################################################################################
 
