@@ -287,7 +287,7 @@ class UZHAviary(BaseRLAviary):
             self.text_id = dummy_text("Rewards: None", self.CLIENT)
 
             self.visualised = True
-            for point in self.trajectory:
+            for point in self.combined_trajectory:
                 sphere_visual = p.createVisualShape(
                     shapeType=p.GEOM_SPHERE,
                     radius=0.03,
