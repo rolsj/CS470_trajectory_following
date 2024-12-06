@@ -107,6 +107,39 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
     
     return waypoints
 
+def find_a_and_b(h1, h2, l, max_height):
+    # Define variables
+    b = sp.symbols('b', real=True, positive=True)
+    
+    # Equations
+    eq1 = (h2 - max_height) * b**2 - (h1 - max_height) * (l - b)**2
+    b_value = sp.solve(eq1, b)  # Solve for b
+    
+    # Choose a valid solution
+    b_value = [val for val in b_value if val.is_real]
+    if len(b_value) != 1:
+        raise ValueError("No unique solution for b found!")
+    
+    b_value = b_value[0]
+    a_value = (h1 - max_height) / b_value**2  # Solve for a
+    
+    return float(a_value), float(b_value)
+
+def generate_parabolic_trajectory_aviation(h1,h2,l,height, num_points):
+    max_height = max(h1,h2)+height
+    a, b = find_a_and_b(h1, h2, l, max_height)
+
+    x_values = np.linspace(0, l, num_points)
+    z_values = a * (x_values-b)**2 + max_height
+    
+    pts = [(x, 0, z) for x, z in zip(x_values, z_values)]
+
+    initial_xyzs = np.array([pts[0]])
+    t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
+    t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
+    
+    return t_traj, initial_xyzs
+
 def init_targets(x_point, z_start, x_land, num_points, up):
     pts = generate_parabolic_trajectory(x_point,z_start,x_land,num_points,up)
     if up:
@@ -173,6 +206,8 @@ def run(
     ##### Set waypoints depending on the selected strategy #####
     if selected_idx == 0: # Flight mode
         raise Exception("FLIGHT mode trajectory not yet made")
+        generate_parabolic_trajectory_aviation(1,1,2,0.1,10)
+        t_traj1 = None
     else: # Drive mode
         t_traj, init_wp = init_targets(0,1,1,5,False)
         t_traj2, init_wp2 = init_targets(2,1,1,5,True)
