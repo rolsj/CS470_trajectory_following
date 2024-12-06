@@ -206,7 +206,7 @@ def run(
     assert 0 <= selected_idx < 2
 
     ##### Set waypoints depending on the selected strategy #####
-    if True: # Flight mode
+    if False: # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
         t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1,4)
         print("here")
