@@ -164,11 +164,11 @@ def run(
 
     if train:
         run_train(config=config, env_factory=env_factory)
-
+    input("train done.")
     if vis:
         for _ in range(5):
             run_test(config=config, env_factory=env_factory)
-
+    input("vis done.")
     if test:
         env_factory.single_traj = True
         env_factory.eval_mode = True
