@@ -105,53 +105,13 @@ class BaseRLAviary(BaseAviary):
         Overrides BaseAviary's method.
 
         """
-        urdf_path = os.path.join(os.path.dirname(__file__), "../assets/world.urdf")
+        urdf_path = os.path.join(os.path.dirname(__file__), "../assets/world_1.0_1.0_2.0.urdf")
         self.obstacle_id = p.loadURDF(urdf_path,
                #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
                useFixedBase=True,
                physicsClientId=self.CLIENT
                )
-
-        urdf_path2 = os.path.join(os.path.dirname(__file__), "../assets/wall2.urdf")  # 다른 URDF 파일 또는 동일 파일 사용
-        self.obstacle_id2 = p.loadURDF(
-            urdf_path2,
-            #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
-            useFixedBase=True,
-            physicsClientId=self.CLIENT
-        )
-        #urdf_path1 = os.path.join(os.path.dirname(__file__), "../assets/wall2.urdf")
-        """
-        self.obstacle_id = p.loadURDF(urdf_path1,
-               #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
-               useFixedBase=True,
-               physicsClientId=self.CLIENT
-               )
-        """
-        """
-        if self.OBS_TYPE == ObservationType.RGB:
-            p.loadURDF("block.urdf",
-                       [1, 0, .1],
-                       p.getQuaternionFromEuler([0, 0, 0]),
-                       physicsClientId=self.CLIENT
-                       )
-            p.loadURDF("cube_small.urdf",
-                       [0, 1, .1],
-                       p.getQuaternionFromEuler([0, 0, 0]),
-                       physicsClientId=self.CLIENT
-                       )
-            p.loadURDF("duck_vhacd.urdf",
-                       [-1, 0, .1],
-                       p.getQuaternionFromEuler([0, 0, 0]),
-                       physicsClientId=self.CLIENT
-                       )
-            p.loadURDF("teddy_vhacd.urdf",
-                       [0, -1, .1],
-                       p.getQuaternionFromEuler([0, 0, 0]),
-                       physicsClientId=self.CLIENT
-                       )
-        else:
-            pass
-        """
+        pass
 
     ################################################################################
 

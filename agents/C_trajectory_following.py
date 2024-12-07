@@ -22,6 +22,7 @@ from typing import Dict
 from tqdm import tqdm
 import json
 from runnables.utils.utils import compute_metrics_single
+from world_builder import build_world
 
 ###### INFRASTRUCTURE PARAMS #######
 GUI = True
@@ -135,8 +136,32 @@ def run(
     output_folder = f"{output_folder}/wp_b={waypoint_buffer_size}_k_p={k_p}_k_wp={k_wp}_k_s={k_s}_max_reward_distance={max_reward_distance}_waypoint_dist_tol={waypoint_dist_tol}"
     print(f"Output folder: {output_folder}")
 
-    t_traj, init_wp = init_targets(0,1,1,5,False)
-    t_traj1, init_wp1 = init_targets(2,1,1,5,True)
+    ##### Use regression models to determine the strategy #####
+    selected_idx, expected_cost = determine_strategy(h1=5, h2=3, l=10)
+    assert 0 <= selected_idx < 2
+
+    ##### Set waypoints depending on the selected strategy #####
+    
+    # get the information of the given map
+    # now only single determined world (not random) is given
+    # it will return ['filename_h1_h2_l']
+    world_names = build_world(h1=1.0, h2=1.0, l=2.0)
+    h1, h2, l = [float(x) for x in world_names[0].split('_')[1:]]
+    l_margin = min(1, l * 0.5)
+    
+    trajectories = []
+    if False: # Flight mode
+        #raise Exception("FLIGHT mode trajectory not yet made")
+        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1,4)
+        print("here")
+        print(t_traj)
+        trajectories.append(t_traj)
+        t_traj2 = None
+    else: # Drive mode
+        t_traj, init_wp = init_targets(0,h1,l_margin,5,False)
+        t_traj2, init_wp2 = init_targets(l,h2,l_margin,5,True)  
+        trajectories.append(t_traj)
+        trajectories.append(t_traj2)
 
     config = Configuration(
         action_type=ACT,
