@@ -284,6 +284,9 @@ def run(
                 k_p,
                 k_wp,
                 k_s,
+                h1,
+                h2,
+                l,
                 max_reward_distance,
                 waypoint_dist_tol,
                 trajectories, config=config, env_factory=env_factory, eval_mode=True
