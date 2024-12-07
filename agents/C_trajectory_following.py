@@ -55,6 +55,7 @@ TEST = True
 TIMESTEPS = 2.5e6
 N_ENVS = 20
 EPISODE_LEN_SEC = 20
+RAND = False
 ####################################
 
 ###### HYPERPARAMS #################
@@ -189,7 +190,7 @@ def run(
     waypoint_dist_tol: float = WAYPOINT_DIST_TOL,
     discr_level: float = DEFAULT_DISCR_LEVEL,
     eval_set: set = DEFAULT_EVAL_SET_FOLDER,
-    n: int = 1,
+    random: bool = False,
 ):
 
     output_folder = f"{output_folder}/wp_b={waypoint_buffer_size}_k_p={k_p}_k_wp={k_wp}_k_s={k_s}_max_reward_distance={max_reward_distance}_waypoint_dist_tol={waypoint_dist_tol}"
@@ -204,8 +205,11 @@ def run(
     # get the information of the given map
     # now only single determined world (not random) is given
     # it will return ['filename_h1_h2_l']
-    world_name = build_world(h1=1.0, h2=1.0, l=2.0)[0]
-    h1, h2, l = [float(x) for x in world_names[0].split('_')[1:]]
+    if random:
+        world_name = build_world(rand=True)[0]
+    else:
+        world_name = build_world(h1=1.0, h2=1.0, l=2.0)[0]
+    h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
     if False: # Flight mode
@@ -304,6 +308,47 @@ def run(
                 "avt time": np.mean(times),
             },
             f"rl_{discr_level}.json",
+        )
+
+def run_wrapper(
+    output_folder=OUTPUT_FOLDER,
+    gui=GUI,
+    timesteps=TIMESTEPS,
+    train: bool = TRAIN,
+    test: bool = TEST,
+    vis: bool = VIS,
+    n_envs: int = N_ENVS,
+    episode_len_sec: int = EPISODE_LEN_SEC,
+    waypoint_buffer_size: int = WAYPOINT_BUFFER_SIZE,
+    k_p: float = K_P,
+    k_wp: float = K_WP,
+    k_s: float = K_S,
+    max_reward_distance: float = MAX_REWARD_DISTANCE,
+    waypoint_dist_tol: float = WAYPOINT_DIST_TOL,
+    discr_level: float = DEFAULT_DISCR_LEVEL,
+    eval_set: set = DEFAULT_EVAL_SET_FOLDER,
+    rand: bool = RAND,
+    n: int = 1,
+):
+    for i in range(n):
+        run(
+            output_folder=output_folder,
+            gui=gui,
+            timesteps=TIMESTEPS,
+            train=train,
+            test=test,
+            vis=vis,
+            n_envs=n_envs,
+            episode_len_sec=episode_len_sec,
+            waypoint_buffer_size=waypoint_buffer_size,
+            k_p=k_p,
+            k_wp=k_wp,
+            k_s=k_s,
+            max_reward_distance=max_reward_distance,
+            waypoint_dist_tol=waypoint_dist_tol,
+            discr_level=discr_level,
+            eval_set=eval_set,
+            random=rand,
         )
 
 
@@ -411,12 +456,19 @@ if __name__ == "__main__":
         metavar="",
     )
     parser.add_argument(
-        "--n",
+        "--rand",
         default=False,
-        type=bool,
+        type=str2bool,
+        help="The number of map generating",
+        metavar="",
+    )
+    parser.add_argument(
+        "--n",
+        default=1,
+        type=int,
         help="The number of map generating",
         metavar="",
     )
     ARGS = parser.parse_args()
 
-    run(**vars(ARGS))
+    run_wrapper(**vars(ARGS))
