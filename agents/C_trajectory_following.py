@@ -133,7 +133,7 @@ def generate_parabolic_trajectory_aviation(h1,h2,l):
     return t_traj, initial_xyzs
 
 def generate_line_trajectory(l, x_land):
-    num_points = max((l-2*x_land), 2)
+    num_points = round(max((l-2*x_land), 2))
     x_values = np.linspace(0, l, num_points)
     
     pts = [(x, 0, 0) for x in x_values]
@@ -204,7 +204,7 @@ def run(
     # get the information of the given map
     # now only single determined world (not random) is given
     # it will return ['filename_h1_h2_l']
-    world_name = build_world(h1=1.0, h2=1.0, l=2.0)[0]
+    world_name = build_world(h1=1.0, h2=1.0, l=5.0)[0]
     h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
