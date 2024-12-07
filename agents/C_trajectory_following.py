@@ -205,8 +205,7 @@ def run(
     # now only single determined world (not random) is given
     # it will return ['filename_h1_h2_l']
     world_name = build_world(h1=1.0, h2=1.0, l=2.0)[0]
-    h1, h2, l = [float(x) for x in world_names[0].split('_')[1:]]
-    l_margin = min(1, l * 0.5)    
+    h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
     if False: # Flight mode
