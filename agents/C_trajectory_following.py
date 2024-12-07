@@ -72,29 +72,14 @@ def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:
         json.dump(benchmarks, file)
 
-def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
-    """
-    Generate waypoints for a parabolic trajectory.
-    
-    Parameters:
-        z_start (float): Starting height (a > 0)
-        x_land (float): x-coordinate of the landing point
-        num_points (int): Number of waypoints in the trajectory
-        
-    Returns:
-        waypoints (list of tuples): List of (x, y, z) waypoints
-    """
+def generate_parabolic_trajectory(x_point, z_start, up):
+    x_land = 1
+
     a = -1.5
-    c = z_start
+    c = z_start+0.036
     b = -(c/x_land)-a*(x_land)
 
-    #x_shift = x_land/5
-    # Coefficients for the parabola
-    """
-    a = -0.5  # Ensures z(x_land) = 0
-    b = x_shift               # Symmetric parabola
-    c = z_start - a*(b)**2                # Starting height
-    """
+    num_points = round((z_start*3)+2)
     # Generate x values
     x_values = np.linspace(0, x_land, num_points)
     
@@ -103,11 +88,15 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
     
     # Generate waypoints
     if up:
-        waypoints = [(x_point-x, 0, z) for x, z in zip(x_values, z_values)]
+        pts = [(x_point-x, 0, z) for x, z in zip(x_values, z_values)]
+        pts = pts[::-1]
     else:
-        waypoints = [(x_point+x, 0, z) for x, z in zip(x_values, z_values)]
-    
-    return waypoints
+        pts = [(x_point+x, 0, z) for x, z in zip(x_values, z_values)]
+        
+    initial_xyzs = np.array([pts[0]])
+    t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
+    t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
+    return t_traj, initial_xyzs
 
 def find_a_and_b(h1, h2, l, max_height):
     # Define variables
@@ -128,8 +117,10 @@ def find_a_and_b(h1, h2, l, max_height):
     
     return float(a_value), float(b_value)
 
-def generate_parabolic_trajectory_aviation(h1,h2,l,height, num_points):
+def generate_parabolic_trajectory_aviation(h1,h2,l):
+    height = 0.5
     max_height = max(h1,h2)+height
+    num_points = round(((max_height-min(h1,h2))+l)*(2/5)*(4))
     a, b = find_a_and_b(h1, h2, l, max_height)
 
     x_values = np.linspace(0, l, num_points)
@@ -141,15 +132,6 @@ def generate_parabolic_trajectory_aviation(h1,h2,l,height, num_points):
     t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
     t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     
-    return t_traj, initial_xyzs
-
-def init_targets(x_point, z_start, x_land, num_points, up):
-    pts = generate_parabolic_trajectory(x_point,z_start,x_land,num_points,up)
-    if up:
-        pts = pts[::-1]
-    initial_xyzs = np.array([pts[0]])
-    t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
-    t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     return t_traj, initial_xyzs
 
 def determine_strategy(h1, h2, l) -> tuple[int, float]:
@@ -212,20 +194,19 @@ def run(
     # now only single determined world (not random) is given
     # it will return ['filename_h1_h2_l']
     world_names = build_world(h1=1.0, h2=1.0, l=2.0)
-    h1, h2, l = [float(x) for x in world_names[0].split('_')[1:]]
-    l_margin = min(1, l * 0.5)    
+    h1, h2, l = [float(x) for x in world_names[0].split('_')[1:]]  
     
     trajectories = []
     if False: # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
-        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1,4)
+        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2)
         print("here")
         print(t_traj)
         trajectories.append(t_traj)
         t_traj2 = None
     else: # Drive mode
-        t_traj, init_wp = init_targets(0,h1,l_margin,5,False)
-        t_traj2, init_wp2 = init_targets(l,h2,l_margin,5,True)  
+        t_traj, init_wp = generate_parabolic_trajectory(0,h1,False)
+        t_traj2, init_wp2 = generate_parabolic_trajectory(l,h2,True)  
         trajectories.append(t_traj)
         trajectories.append(t_traj2)
 

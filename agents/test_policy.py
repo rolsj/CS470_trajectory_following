@@ -163,7 +163,7 @@ def test_simple_follower(
                 current_height = current_position[2]
                 current_projection, current_projection_idx, reached_distance = test_env.rewards.get_travelled_distance(current_position)
                 next_waypoint_idx = min(current_projection_idx + 1, len(test_env.trajectory) - 1)
-                print(f"next_waypoint_idx: {next_waypoint_idx}")
+                #print(f"next_waypoint_idx: {next_waypoint_idx}")
                 next_waypoint_height = test_env.trajectory[next_waypoint_idx][2]
                 
                 # 지상 이동 가능 여부 판단
