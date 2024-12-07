@@ -159,7 +159,7 @@ def test_simple_follower(
             distance_to_target = np.linalg.norm(current_position - target_position)
             #print("distance_to_target")
             #print(distance_to_target)
-            if distance_to_target < 0.13:
+            if distance_to_target < 0.15:
                 action = np.zeros_like(action)
                 while not np.allclose(current_position[2], target_position[2], atol=0.05):
                     obs, reward, terminated, truncated, info = test_env.step(action)
@@ -242,18 +242,11 @@ def test_simple_follower(
                         cos_angle = np.clip(cos_angle, -1.0, 1.0)
                         angle_diff = np.arccos(cos_angle)
 
-                    # PID 제어를 통한 바퀴 속도 계산
                     x_error = test_env.trajectory[next_waypoint_idx][0] - current_position[0]
-                    integral_x_error += x_error * (1.0/test_env.CTRL_FREQ)
-                    derivative_x_error = (x_error - last_x_error) * test_env.CTRL_FREQ
-                    last_x_error = x_error
-                    
-                    base_velocity = P_COEFF_WHEEL * x_error + \
-                                  I_COEFF_WHEEL * integral_x_error + \
-                                  D_COEFF_WHEEL * derivative_x_error
-                    
+                    x_error_sign = np.sign(x_error)
+                    x_error_log = x_error_sign * np.log1p(abs(x_error))
                     # 바퀴 속도 제한
-                    base_velocity = np.clip(base_velocity, -10.0, 10.0)
+                    base_velocity = np.clip(x_error_log * 50, -50.0, 50.0)
                     wheel_velocities = np.array([base_velocity] * 4)
                     
                     # 바퀴 제어 적용
@@ -264,12 +257,10 @@ def test_simple_follower(
                             p.VELOCITY_CONTROL,
                         targetVelocity=wheel_velocities[j],
                     )
-                    p.stepSimulation()
                     
                     action = np.zeros(4)
                     action = action.reshape(1, 4)
                     obs, reward, terminated, truncated, info = test_env.step(action)
-                    print("hello Using PID wheel control, velocity:", base_velocity)
                 else:
                     # 공중에서는 일반 동작
                     print(i)
