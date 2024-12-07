@@ -217,15 +217,8 @@ def run(
         trajectories.append(t_traj)
         t_traj2 = None
     else: # Drive mode
-<<<<<<< HEAD
         t_traj, init_wp = init_targets(0,1,1,False)
         t_traj2, init_wp2 = init_targets(2,1,1,True)
-=======
-        t_traj, init_wp = init_targets(0,1,1,5,False)
-        t_traj2, init_wp2 = init_targets(2,1,1,5,True)  
-        trajectories.append(t_traj)
-        trajectories.append(t_traj2)
->>>>>>> ffb7809781c31bf1af3ddbae591e82d851c84e2b
 
     config = Configuration(
         action_type=ACT,
@@ -261,7 +254,7 @@ def run(
             k_s,
             max_reward_distance,
             waypoint_dist_tol,
-            trajectories, config=config, env_factory=env_factory)
+            t_traj2, config=config, env_factory=env_factory)
 
     if test:
         env_factory.single_traj = True
