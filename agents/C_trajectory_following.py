@@ -66,7 +66,6 @@ MAX_REWARD_DISTANCE = 0.0
 WAYPOINT_DIST_TOL = 0.05
 DEFAULT_DISCR_LEVEL = 10
 
-
 ####################################
 def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:

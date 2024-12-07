@@ -216,7 +216,7 @@ def test_simple_follower(
                     print(angle_diff > angle_threshold)
                     print(steps < max_steps)
                     """
-                    while angle_diff > angle_threshold and steps < max_steps:
+                    while angle_diff > angle_threshold and steps < max_steps and np.linalg.norm(desired_direction_serve) > 0.9:
                         #time.sleep(5)
                         # 왼 바퀴 음수, 오른 바퀴 양수 속도로 제자리 회전
                         print(angle_diff)
@@ -272,7 +272,7 @@ def test_simple_follower(
                     print("hello Using PID wheel control, velocity:", base_velocity)
                 else:
                     # 공중에서는 일반 동작
-                    print("we use air")
+                    print(i)
                     obs, reward, terminated, truncated, info = test_env.step(action)
                     if is_on_ground:
                         print("hello Taking off for next waypoint")
