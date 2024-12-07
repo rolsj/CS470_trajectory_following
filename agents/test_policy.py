@@ -13,24 +13,88 @@ from stable_baselines3 import PPO
 import time
 import numpy as np
 from gym_pybullet_drones.utils.utils import sync
+import pybullet as p
+from aviaries.rewards.uzh_trajectory_reward import Rewards
+import xml.etree.ElementTree as ET
 
+def compute_engery(env, action, dt, rpm_prev, k_m):
+    '''
+    ** params **
+    env: env - test environment
+    action: action - test action
+    dt: float - time period
+    rpm_prev: ndarray - 1 * 4 size rpm
+    km: float - thrust coeff.
+
+    ** return **
+    energy: float - energy
+    rpm_prev: ndarray - 1 * 4 size rpm
+    '''
+    # compute energy expenditure
+    rpm = env.last_clipped_action
+    ang_vel = rpm * np.pi / 30
+    ang_acc = rpm - rpm_prev
+    
+    # energy term 1 ( sum{k_m * w^2} * dt )
+    J1 = dt * np.sum(k_m * ang_vel ** 2)
+
+    # energy term 2 ( sum{acc * k_m * (acc - k_m * w)} * dt )
+    J2 = dt * np.sum(ang_acc * k_m * (ang_acc - k_m * ang_vel))
+
+    # choose either J1 or J2 as energy
+    return 1, rpm
 
 def test_simple_follower(
+    k_p,
+    k_wp,
+    k_s,
+    h1,
+    h2,
+    l,
+    max_reward_distance,
+    waypoint_dist_tol,
+    trajectories,
     local: bool,
     filename: str,
-    test_env: BaseRLAviary,
+    test_env: UZHAviary,
     output_folder: str,
     eval_mode=False,
+    map_name=None,
 ):
-
-    # load model
     if os.path.isfile(filename + "/best_model.zip"):
         path = filename + "/best_model.zip"
     else:
         print("[ERROR]: no model under the specified path", filename)
     model = PPO.load(path)
-
-    # visualise in test environment
+    
+    # load drone urdf model
+    tree = ET.parse("../gym_pybullet_drones/assets/cf2x.urdf")
+    root = tree.getroot()
+    drone_properties = {}
+    for element in root.iter('properties'):
+        # Extract attributes from the <properties> tag
+        # arm                 [m] : distance from center of mass to each motor
+        # kf              [N s^2] : thrust coeff.
+        # km            [N m s^2] : torque coeff.
+        # thrust2weight           : thrust / weight
+        # max_speed_kmh    [km/h] : max speed
+        # gnd_eff_coeff           : ground effect coeff.
+        # prop_radius         [m] : radius of each motor
+        # drag_coeff_xy           : drag on xy plane coeff.
+        # drag_coeff_z            : drag on z axis coeff.
+        # dw_coeff_1              : drag of wing coeff.1
+        # dw_coeff_2              : drag of wing coeff.2
+        # dw_coeff_3              : drag of wing coeff.3
+        drone_properties.update(element.attrib)
+    k_m = float(drone_properties["km"])
+    time_period = 1 / test_env.CTRL_FREQ
+    
+    # load map urdf model
+    if map_name:
+        tree = ET.parse(f"../gym_pybullet_drones/assets/{map_name}.urdf")
+        root = tree.getroot()
+        drone_properties = {}
+    
     logger = Logger(
         logging_freq_hz=int(test_env.CTRL_FREQ),
         num_drones=1,
@@ -40,75 +104,239 @@ def test_simple_follower(
 
     obs, info = test_env.reset(seed=42, options={})
     start = time.time()
-    for i in range((test_env.EPISODE_LEN_SEC) * test_env.CTRL_FREQ):
-        action, _states = model.predict(obs, deterministic=True)
-        obs, reward, terminated, truncated, info = test_env.step(action)
+    
+    # 모든 궤적을 하나로 합치기
+    all_waypoints = []
+    for trajectory in trajectories:
+        all_waypoints.extend(trajectory.wps)
+    combined_trajectory = np.array([x.coordinate for x in all_waypoints])
+    test_env.combined_trajectory = np.vstack(
+            [
+                combined_trajectory,
+                np.array(combined_trajectory[-1] * np.ones((test_env.WAYPOINT_BUFFER_SIZE, 3))),
+            ]
+        )
+    
+    # PID 제어 관련 상수 추가
+    P_COEFF_WHEEL = 50
+    I_COEFF_WHEEL = 0.1
+    D_COEFF_WHEEL = 10
+    last_x_error = 0
+    integral_x_error = 0
+    
+    # energy computation
+    energy_cum = 0.
+    energy_cur = 0.
+    
+    # 각 궤적별로 실행
+    for trajectory in trajectories:
+        test_env.current_waypoint_idx = 0
+        test_env.single_traj = trajectory
+        test_env.trajectory = test_env.set_trajectory()
+        test_env.self_trajectory = test_env.set_trajectory()
 
-        # 드론의 현재 위치와 목표 위치 계산
-        current_position = test_env._getDroneStateVector(0)[:3]
-        target_position = test_env.trajectory[-1]
-        distance_to_target = np.linalg.norm(current_position - target_position)
+        test_env.rewards = Rewards(
+            trajectory=test_env.trajectory,
+            k_p=k_p,
+            k_wp=k_wp,
+            k_s=k_s,
+            max_reward_distance=max_reward_distance,
+            dist_tol=waypoint_dist_tol,
+        )
+        test_env.rewards.reset(test_env.self_trajectory)
 
-        # 자유 낙하 조건
-        if distance_to_target < 0.1:  # 목적지와 0.5m 이내로 접근하면
-            print("Entering free fall...")
-            current_z = test_env._getDroneStateVector(0)[2]
-            print(current_z)
-            while current_z > 0.0:  # 자유 낙하 루프
-                action = np.zeros_like(action)  # 모든 제어 신호를 0으로 설정
-                obs, reward, terminated, truncated, info = test_env.step(action)
-
-                # 드론의 현재 z좌표 확인
-                current_z = test_env._getDroneStateVector(0)[2]  # z좌표 (x=0, y=1, z=2)
-
-                # z좌표가 0 이하로 떨어지면 자유 낙하 종료
-
-                # 중간 지연을 추가해 시뮬레이션 속도 조절
-            time.sleep(10)
-            break  # 루프 종료 (필요 시)
-
-        obs2 = obs.squeeze()
-        act2 = action.squeeze()
-        # print("Obs:", obs, "\tAction", action, "\tReward:", reward, "\tTerminated:", terminated, "\tTruncated:", truncated)
-        logger.log(
-            drone=0,
-            timestamp=i / test_env.CTRL_FREQ,
-            state=np.hstack([obs2[0:3], np.zeros(4), obs2[3:15], act2]),
-            control=np.zeros(12),
+        test_env.furthest_reached_waypoint_idx = 0
+        test_env.future_waypoints_relative = (
+            test_env.trajectory[
+                test_env.current_waypoint_idx : test_env.current_waypoint_idx
+                + test_env.WAYPOINT_BUFFER_SIZE
+            ]
+            - test_env.trajectory[test_env.current_waypoint_idx]
         )
 
-        # test_env.render()
-        # print(terminated)
-        if not eval_mode:
-            sync(i, start, test_env.CTRL_TIMESTEP)
-        if terminated:
-
-            if eval_mode:
-                test_env.close()
-                test_env.pos_logger.flush()
-                all_pos = test_env.pos_logger.load_all()
-                t = test_env.step_counter * test_env.PYB_TIMESTEP
-                if type(test_env) == UZHAviary:
-                    success = test_env.reached_last_point
+        rpm_prev = np.zeros((1, 4))
+        for i in range((test_env.EPISODE_LEN_SEC) * test_env.CTRL_FREQ):
+            current_position = test_env._getDroneStateVector(0)[:3]
+            target_position = test_env.trajectory[-1]
+            distance_to_target = np.linalg.norm(current_position - target_position)
+            #print("distance_to_target")
+            #print(distance_to_target)
+            if distance_to_target < 0.13:
+                action = np.zeros_like(action)
+                while not np.allclose(current_position[2], target_position[2], atol=0.05):
+                    obs, reward, terminated, truncated, info = test_env.step(action)
+                    current_position = test_env._getDroneStateVector(0)[:3]
+                # print("Current trajectory completed")
+                break
+            else:
+                states = test_env._getDroneStateVector(0)
+                action, _states = model.predict(obs, deterministic=True)
+                
+                # 현재 높이와 다음 웨이포인트 높이 확인
+                if -0.01 < current_position[0] < 0.01:
+                    altitude = h1
+                elif l - 0.01 < current_position[1] < l + 0.01 :
+                    altitude = h2
                 else:
-                    success = None
-                return all_pos, success, t
-            obs = test_env.reset(seed=42, options={})
-            break
+                    altitude = 0
+                current_height = current_position[2] - altitude
+                current_projection, current_projection_idx, reached_distance = test_env.rewards.get_travelled_distance(current_position)
+                next_waypoint_idx = min(current_projection_idx + 1, len(test_env.trajectory) - 1)
+                next_waypoint_height = test_env.trajectory[next_waypoint_idx][2] - altitude
+                
+                # 지상 이동 가능 여부 판단
+                is_on_ground = current_height <= 0.05
+                next_point_near_ground = next_waypoint_height <= 0.05
+                can_use_ground = is_on_ground and next_point_near_ground
+                
+                if can_use_ground:
+                    # 드론의 현재 방향 구하기
+                    orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]  # 쿼터니언
+                    rotation_mat = p.getMatrixFromQuaternion(orientation)
+                    # 드론의 전진 방향을 x축 기준으로 잡으면 forward_dir는 첫 열 벡터
+                    forward_dir = np.array([rotation_mat[0], rotation_mat[3], rotation_mat[6]])
+                    desired_direction_serve = target_position-current_position
+                    desired_direction_xy = np.array([desired_direction_serve[0], desired_direction_serve[1],0])
+                    desired_direction = desired_direction_xy /  np.linalg.norm(desired_direction_xy)
+                    # 현재 방향과 목표 방향 사이의 각도 계산
+                    cos_angle = np.dot(forward_dir, desired_direction) / (np.linalg.norm(forward_dir) * np.linalg.norm(desired_direction))
+                    cos_angle = np.clip(cos_angle, -1.0, 1.0)
+                    angle_diff = np.arccos(cos_angle)
+                    # 일정 각도 이상 차이나면 제자리에서 회전으로 방향 맞추기
+                    angle_threshold = np.deg2rad(5)  # 5도 이내면 방향 맞았다고 판단
+                    rotation_speed = 2.0
+                    # cross product를 이용해 회전 방향 결정
+                    # forward_dir를 desired_direction 쪽으로 회전시키기 위한 방향성 계산
+                    cross_dir = np.cross(forward_dir, desired_direction)
+                    rotation_sign = np.sign(cross_dir[2])  # z축 기준 회전 방향
+
+                    steps = 0
+                    max_steps = 700  # 최대 시도 스텝
+                    """
+                    print("angle_diff: ", angle_diff)
+                    print("angle_threshold: ", angle_threshold)
+                    print(angle_diff > angle_threshold)
+                    print(steps < max_steps)
+                    """
+                    while angle_diff > angle_threshold and steps < max_steps:
+                        #time.sleep(5)
+                        # 왼 바퀴 음수, 오른 바퀴 양수 속도로 제자리 회전
+                        # print(angle_diff)
+                        left_speed = -rotation_speed * rotation_sign
+                        right_speed = rotation_speed * rotation_sign
+
+                        p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[0], p.VELOCITY_CONTROL, targetVelocity=left_speed)
+                        p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[1], p.VELOCITY_CONTROL, targetVelocity=right_speed)
+                        p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[2], p.VELOCITY_CONTROL, targetVelocity=left_speed)
+                        p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[3], p.VELOCITY_CONTROL, targetVelocity=right_speed)
+                        action = np.zeros(4)
+                        action = action.reshape(1, 4)
+                        obs, reward, terminated, truncated, info = test_env.step(action)
+                        #print("방향전환")
+                        #print(test_env._getDroneStateVector(0)[:3])
+                        steps += 1
+
+                        # 방향 갱신
+                        orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]
+                        rotation_mat = p.getMatrixFromQuaternion(orientation)
+                        forward_dir = np.array([rotation_mat[0], rotation_mat[3], rotation_mat[6]])
+                        cos_angle = np.dot(forward_dir, desired_direction) / (np.linalg.norm(forward_dir) * np.linalg.norm(desired_direction))
+                        cos_angle = np.clip(cos_angle, -1.0, 1.0)
+                        angle_diff = np.arccos(cos_angle)
+
+                    # PID 제어를 통한 바퀴 속도 계산
+                    x_error = test_env.trajectory[next_waypoint_idx][0] - current_position[0]
+                    integral_x_error += x_error * (1.0/test_env.CTRL_FREQ)
+                    derivative_x_error = (x_error - last_x_error) * test_env.CTRL_FREQ
+                    last_x_error = x_error
+                    
+                    base_velocity = P_COEFF_WHEEL * x_error + \
+                                  I_COEFF_WHEEL * integral_x_error + \
+                                  D_COEFF_WHEEL * derivative_x_error
+                    
+                    # 바퀴 속도 제한
+                    base_velocity = np.clip(base_velocity, -10.0, 10.0)
+                    wheel_velocities = np.array([base_velocity] * 4)
+                    
+                    # 바퀴 제어 적용
+                    for j, wheel_id in enumerate(test_env.wheel_joints):
+                        p.setJointMotorControl2(
+                            test_env.DRONE_IDS[0],
+                            wheel_id,
+                            p.VELOCITY_CONTROL,
+                        targetVelocity=wheel_velocities[j],
+                    )
+                    p.stepSimulation()
+                    
+                    action = np.zeros(4)
+                    action = action.reshape(1, 4)
+                    obs, reward, terminated, truncated, info = test_env.step(action)
+                    # print("hello Using PID wheel control, velocity:", base_velocity)
+                else:
+                    # 공중에서는 일반 동작
+                    # print("we use air")
+                    obs, reward, terminated, truncated, info = test_env.step(action)
+                    # if is_on_ground:
+                    #     print("hello Taking off for next waypoint")
+                
+                obs2 = obs.squeeze()
+                act2 = action.squeeze()
+            
+            #if i % test_env.CTRL_FREQ == 0:    
+            energy_cur, rpm_prev = compute_engery(test_env, action, time_period, rpm_prev, k_m)
+            energy_cum += energy_cur
+
+            logger.log(
+                drone=0,
+                timestamp=i / test_env.CTRL_FREQ,
+                state=np.hstack([obs2[0:3], np.zeros(4), obs2[3:15], act2]),
+                control=np.zeros(12),
+            )
+
+            if not eval_mode:
+                sync(i, start, test_env.CTRL_TIMESTEP)
+            if terminated:
+                if eval_mode:
+                    test_env.close()
+                    test_env.pos_logger.flush()
+                    all_pos = test_env.pos_logger.load_all()
+                    t = test_env.step_counter * test_env.PYB_TIMESTEP
+                    success = test_env.reached_last_point if type(test_env) == UZHAviary else None
+                    return all_pos, success, t
+
+                obs = test_env.reset(seed=42, options={})
+                break
+    print(f"[test is done] {h1}, {h2}, {l} energy cumulated : {energy_cum}")
+    time.sleep(10)
     test_env.close()
-    print("here1")
     logger.plot()
     return None, False, None
 
-
-def run_test(config: Configuration, env_factory: BaseFactory, eval_mode=False):
-
+def run_test(
+    k_p,
+    k_wp,
+    k_s,
+    h1,
+    h2,
+    l,
+    max_reward_distance,
+    waypoint_dist_tol,
+    trajectories, config: Configuration, env_factory: BaseFactory, eval_mode=False):
     if not eval_mode:
         test_env = env_factory.get_test_env_gui()
     else:
         test_env = env_factory.get_test_env_no_gui()
 
     eval_res = test_simple_follower(
+        k_p,
+        k_wp,
+        k_s,
+        h1,
+        h2,
+        l,
+        max_reward_distance,
+        waypoint_dist_tol,
+        trajectories,
         local=config.local,
         filename=config.output_path_location,
         test_env=test_env,

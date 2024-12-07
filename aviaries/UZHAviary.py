@@ -1,4 +1,4 @@
-from gym_pybullet_drones.envs.BaseRLAviary import BaseRLAviary
+from gym_pybullet_drones.envs.WheelPropRLAviary import WheelPropRLAviary
 from gym_pybullet_drones.utils.enums import (
     DroneModel,
     Physics,
@@ -12,6 +12,7 @@ from gymnasium import spaces
 
 from trajectories import TrajectoryFactory, DiscretizedTrajectory
 from aviaries.rewards.uzh_trajectory_reward import Rewards
+from gym_pybullet_drones.envs.BaseRLAviary import BaseRLAviary
 
 txt_colour = [0, 0, 0]
 txt_size = 2
@@ -65,6 +66,7 @@ class UZHAviary(BaseRLAviary):
         one_traj=False,
         eval_mode=False,
         log_positions=False,
+        map_name=None,
     ):
 
         self.EPISODE_LEN_SEC = episode_len_sec
@@ -122,6 +124,7 @@ class UZHAviary(BaseRLAviary):
             obs=obs,
             act=act,
             log_positions=log_positions,
+            map_name=map_name,
         )
 
         # Visualisation
@@ -287,7 +290,7 @@ class UZHAviary(BaseRLAviary):
             self.text_id = dummy_text("Rewards: None", self.CLIENT)
 
             self.visualised = True
-            for point in self.trajectory:
+            for point in self.combined_trajectory:
                 sphere_visual = p.createVisualShape(
                     shapeType=p.GEOM_SPHERE,
                     radius=0.03,

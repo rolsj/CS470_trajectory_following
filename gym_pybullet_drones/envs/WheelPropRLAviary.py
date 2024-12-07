@@ -4,11 +4,11 @@ import pybullet as p
 from gymnasium import spaces
 from collections import deque
 
-from gym_pybullet_drones.envs.BaseAviary import BaseAviary
+from gym_pybullet_drones.envs.WheelPropAviary import WheelPropAviary
 from gym_pybullet_drones.utils.enums import DroneModel, Physics, ActionType, ObservationType, ImageType
-from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
+from gym_pybullet_drones.control.WheelDSLPIDControl import WheelDSLPIDControl
 
-class BaseRLAviary(BaseAviary):
+class WheelPropRLAviary(WheelPropAviary):
     """Base single and multi-agent environment class for reinforcement learning."""
     
     ################################################################################
@@ -26,8 +26,7 @@ class BaseRLAviary(BaseAviary):
                  record=False,
                  obs: ObservationType=ObservationType.KIN,
                  act: ActionType=ActionType.RPM,
-                 log_positions = False,
-                 map_name=None,
+                 log_positions = False
                  ):
         """Initialization of a generic single and multi-agent RL environment.
 
@@ -71,13 +70,11 @@ class BaseRLAviary(BaseAviary):
         vision_attributes = True if obs == ObservationType.RGB else False
         self.OBS_TYPE = obs
         self.ACT_TYPE = act
-        
-        self.MAP = map_name
         #### Create integrated controllers #########################
         if act in [ActionType.PID, ActionType.VEL, ActionType.ONE_D_PID, ActionType.ATTITUDE_PID]:
             os.environ['KMP_DUPLICATE_LIB_OK']='True'
             if drone_model in [DroneModel.CF2X, DroneModel.CF2P]:
-                self.ctrl = [DSLPIDControl(drone_model=DroneModel.CF2X) for i in range(num_drones)]
+                self.ctrl = [WheelDSLPIDControl(drone_model=DroneModel.CF2X) for i in range(num_drones)]
             else:
                 print("[ERROR] in BaseRLAviary.__init()__, no controller is available for the specified drone_model")
         super().__init__(drone_model=drone_model,
@@ -98,6 +95,8 @@ class BaseRLAviary(BaseAviary):
         #### Set a limit on the maximum target speed ###############
         if act == ActionType.VEL:
             self.SPEED_LIMIT = 0.03 * self.MAX_SPEED_KMH * (1000/3600)
+        # wheel_velocities 프로퍼티 추가
+        self.wheel_velocities = np.zeros((self.NUM_DRONES, 4))
 
     ################################################################################
 
@@ -108,14 +107,37 @@ class BaseRLAviary(BaseAviary):
         Overrides BaseAviary's method.
 
         """
-        if self.MAP:
-            urdf_path = os.path.join(os.path.dirname(__file__), f"../assets/{self.MAP}.urdf")
-            self.obstacle_id = p.loadURDF(urdf_path,
-                #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
-                useFixedBase=True,
-                physicsClientId=self.CLIENT
-                )
-        pass
+        urdf_path = os.path.join(os.path.dirname(__file__), "../assets/wall1.urdf")
+        self.obstacle_id = p.loadURDF(urdf_path,
+               #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
+               useFixedBase=True,
+               physicsClientId=self.CLIENT
+               )
+        """
+        if self.OBS_TYPE == ObservationType.RGB:
+            p.loadURDF("block.urdf",
+                       [1, 0, .1],
+                       p.getQuaternionFromEuler([0, 0, 0]),
+                       physicsClientId=self.CLIENT
+                       )
+            p.loadURDF("cube_small.urdf",
+                       [0, 1, .1],
+                       p.getQuaternionFromEuler([0, 0, 0]),
+                       physicsClientId=self.CLIENT
+                       )
+            p.loadURDF("duck_vhacd.urdf",
+                       [-1, 0, .1],
+                       p.getQuaternionFromEuler([0, 0, 0]),
+                       physicsClientId=self.CLIENT
+                       )
+            p.loadURDF("teddy_vhacd.urdf",
+                       [0, -1, .1],
+                       p.getQuaternionFromEuler([0, 0, 0]),
+                       physicsClientId=self.CLIENT
+                       )
+        else:
+            pass
+        """
 
     ################################################################################
 
@@ -177,6 +199,7 @@ class BaseRLAviary(BaseAviary):
         
         self.action_buffer.append(action)
         rpm = np.zeros((self.NUM_DRONES,4))
+        self.wheel_velocities = np.zeros((self.NUM_DRONES, 4))
         for k in range(action.shape[0]):
             target = action[k, :]
             if self.ACT_TYPE == ActionType.RPM:
@@ -235,7 +258,7 @@ class BaseRLAviary(BaseAviary):
                     target_thrust = float(target[0])
                     target_thrust = np.array(self.HOVER_RPM * (1+0.05*target_thrust))
                     target_rpy_rates = target[1:4]
-                    res, _, _ = self.ctrl[k].computeControl(
+                    wheel_vels, prop_rpms = self.ctrl[k].computeControl(
                         control_timestep=self.CTRL_TIMESTEP,
                         cur_pos=state[0:3],
                         cur_quat=state[3:7],
@@ -245,7 +268,8 @@ class BaseRLAviary(BaseAviary):
                         target_rpy_rates=target_rpy_rates,
                         target_thrust=target_thrust
                     )
-                    rpm[k,:] = res
+                    rpm[k,:] = prop_rpms
+                    self.wheel_velocities[k,:] = wheel_vels
             else:
                 print("[ERROR] in BaseRLAviary._preprocessAction()")
                 exit()
