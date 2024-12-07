@@ -16,12 +16,14 @@ class WheelPropAviary(CtrlAviary):
                  initial_rpys=None,
                  physics: Physics=Physics.PYB,
                  pyb_freq: int=240,
-                 ctrl_freq: int=30,
+                 ctrl_freq: int=240,
                  gui=False,
                  record=False,
                  obstacles=False,
                  user_debug_gui=True,
-                 output_folder="results"
+                 vision_attributes=False,
+                 output_folder="results",
+                 log_positions=False
                  ):
         """초기화 메서드."""
         super().__init__(
@@ -37,7 +39,9 @@ class WheelPropAviary(CtrlAviary):
             record=record,
             obstacles=obstacles,
             user_debug_gui=user_debug_gui,
-            output_folder=output_folder
+            vision_attributes=vision_attributes,
+            output_folder=output_folder,
+            log_positions=log_positions
         )
         
         # 바퀴 관련 설정
@@ -59,22 +63,21 @@ class WheelPropAviary(CtrlAviary):
         
         Parameters
         ----------
-        action : dict
-            prop_action: (NUM_DRONES, 4)-shaped array of propeller RPMs
-            wheel_action: (NUM_DRONES, 4)-shaped array of wheel velocities
+        action : ndarray
+            (NUM_DRONES, 4)-shaped array of propeller RPMs
         """
         # 프로펠러 제어 적용
-        prop_action = action.get('prop_action', np.zeros((self.NUM_DRONES, 4)))
+        prop_action = action
         
-        # 바퀴 제어 적용
-        if 'wheel_action' in action:
+        # 바퀴 제어 적용 (wheel_velocities가 있는 경우)
+        if hasattr(self, 'wheel_velocities'):
             for i in range(self.NUM_DRONES):
                 for j, wheel_id in enumerate(self.wheel_joints):
                     p.setJointMotorControl2(
                         self.DRONE_IDS[i],
                         wheel_id,
                         p.VELOCITY_CONTROL,
-                        targetVelocity=action['wheel_action'][i, j],
+                        targetVelocity=self.wheel_velocities[i, j],
                     )
         
         # 기존 step 실행 (프로펠러 제어)

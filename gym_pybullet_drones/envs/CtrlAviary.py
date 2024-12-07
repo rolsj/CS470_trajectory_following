@@ -23,7 +23,8 @@ class CtrlAviary(BaseAviary):
                  obstacles=False,
                  user_debug_gui=True,
                  output_folder='results',
-                 log_positions=False
+                 log_positions=False,
+                 vision_attributes=None,
                  ):
         """Initialization of an aviary environment for control applications.
 
@@ -53,6 +54,8 @@ class CtrlAviary(BaseAviary):
             Whether to add obstacles to the simulation.
         user_debug_gui : bool, optional
             Whether to draw the drones' axes and the GUI RPMs sliders.
+        vision_attributes : dict, optional
+            Vision attributes for the drones.
 
         """
         super().__init__(drone_model=drone_model,
@@ -68,7 +71,8 @@ class CtrlAviary(BaseAviary):
                          obstacles=obstacles,
                          user_debug_gui=user_debug_gui,
                          output_folder=output_folder,
-                         log_positions=False
+                         log_positions=log_positions,
+                         vision_attributes=vision_attributes
                          )
 
     ################################################################################

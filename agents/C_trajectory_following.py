@@ -6,6 +6,7 @@ Script learns an agent for trajectory following. Policy strongly inspired by [1]
 """
 
 import argparse
+import sympy as sp
 import numpy as np
 from gym_pybullet_drones.utils.utils import str2bool
 from gym_pybullet_drones.utils.enums import ObservationType, ActionType
@@ -22,6 +23,9 @@ from typing import Dict
 from tqdm import tqdm
 import json
 from runnables.utils.utils import compute_metrics_single
+
+from agents.regression import Regression
+import os
 
 ###### INFRASTRUCTURE PARAMS #######
 GUI = True
@@ -67,7 +71,7 @@ def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:
         json.dump(benchmarks, file)
 
-def generate_parabolic_trajectory(z_start, x_land, num_points=50):
+def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
     """
     Generate waypoints for a parabolic trajectory.
     
@@ -79,40 +83,101 @@ def generate_parabolic_trajectory(z_start, x_land, num_points=50):
     Returns:
         waypoints (list of tuples): List of (x, y, z) waypoints
     """
+    a = -1.5
+    c = z_start
+    b = -(c/x_land)-a*(x_land)
+
+    #x_shift = x_land/5
     # Coefficients for the parabola
-    a = -z_start / (x_land**2)  # Ensures z(x_land) = 0
-    b = 0                      # Symmetric parabola
-    c = z_start                # Starting height
-    
+    """
+    a = -0.5  # Ensures z(x_land) = 0
+    b = x_shift               # Symmetric parabola
+    c = z_start - a*(b)**2                # Starting height
+    """
     # Generate x values
     x_values = np.linspace(0, x_land, num_points)
     
     # Calculate z values for the trajectory
-    z_values = a * x_values**2 + b * x_values + c
+    z_values = a * (x_values)**2 + b*(x_values) + c
     
     # Generate waypoints
-    waypoints = [(x, 0, z) for x, z in zip(x_values, z_values)]
+    if up:
+        waypoints = [(x_point-x, 0, z) for x, z in zip(x_values, z_values)]
+    else:
+        waypoints = [(x_point+x, 0, z) for x, z in zip(x_values, z_values)]
     
     return waypoints
 
-def init_targets():
-    points_per_segment = 4
-    z_segment = np.array(
-        [[0, 0, (1 / points_per_segment) * i] for i in range(1, points_per_segment + 1)]
-    )
-    y_segment = np.array(
-        [[0, (1 / points_per_segment) * i, 1] for i in range(1, points_per_segment + 1)]
-    )
-    x_segment = np.array(
-        [[0, 1, 1 - ((1 / points_per_segment) * i)] for i in range(1, points_per_segment + 1)]
-    )
-    initial_xyzs = np.array([[0.0, 0.0, 1.0]])
-    pts = np.vstack([initial_xyzs, y_segment, x_segment])
-    pts = generate_parabolic_trajectory(1,1,10)
+def find_a_and_b(h1, h2, l, max_height):
+    # Define variables
+    b = sp.symbols('b', real=True, positive=True)
+    
+    # Equations
+    eq1 = (h2 - max_height) * b**2 - (h1 - max_height) * (l - b)**2
+    b_value = sp.solve(eq1, b)  # Solve for b
+    
+    # Choose a valid solution
+    b_value = [val for val in b_value if val.is_real and 0 <= val <= l]
+    """
+    if len(b_value) != 1:
+        raise ValueError("No unique solution for b found!")
+    """
+    b_value = b_value[0]
+    a_value = (h1 - max_height) / b_value**2  # Solve for a
+    
+    return float(a_value), float(b_value)
+
+def generate_parabolic_trajectory_aviation(h1,h2,l,height, num_points):
+    max_height = max(h1,h2)+height
+    a, b = find_a_and_b(h1, h2, l, max_height)
+
+    x_values = np.linspace(0, l, num_points)
+    z_values = a * (x_values-b)**2 + max_height
+    
+    pts = [(x, 0, z) for x, z in zip(x_values, z_values)]
+
+    initial_xyzs = np.array([pts[0]])
+    t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
+    t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
+    
+    return t_traj, initial_xyzs
+
+def init_targets(x_point, z_start, x_land, num_points, up):
+    pts = generate_parabolic_trajectory(x_point,z_start,x_land,num_points,up)
+    if up:
+        pts = pts[::-1]
+    initial_xyzs = np.array([pts[0]])
     t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
     t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     return t_traj, initial_xyzs
 
+def determine_strategy(h1, h2, l) -> tuple[int, float]:
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_data")
+    with open(os.path.join(data_dir, "flight.json"), "r", encoding="utf-8") as f:
+        data = json.load(f)
+        x_train = np.array(data[0])
+        y_train = np.array(data[1])
+    model_flight = Regression()
+    model_flight.train_with(x_train, y_train)
+    
+    with open(os.path.join(data_dir, "drive.json"), "r", encoding="utf-8") as f:
+        data = json.load(f)
+        x_train = np.array(data[0])
+        y_train = np.array(data[1])
+    model_drive = Regression()    
+    model_drive.train_with(x_train, y_train)
+
+    expected_cost_flight = model_flight.predict(np.array([[h1, h2, l]]))
+    expected_cost_drive = model_drive.predict(np.array([[h1, h2, l]]))
+    print(f"Expected cost (energy) when flight: {expected_cost_flight}")
+    print(f"Expected cost (energy) when drive: {expected_cost_drive}")
+
+    if expected_cost_flight < expected_cost_drive:
+        print("flight selected")
+        return (0, expected_cost_flight)
+    else:
+        print("drive selected")
+        return (1, expected_cost_drive)
 
 def run(
     output_folder=OUTPUT_FOLDER,
@@ -136,7 +201,25 @@ def run(
     output_folder = f"{output_folder}/wp_b={waypoint_buffer_size}_k_p={k_p}_k_wp={k_wp}_k_s={k_s}_max_reward_distance={max_reward_distance}_waypoint_dist_tol={waypoint_dist_tol}"
     print(f"Output folder: {output_folder}")
 
-    t_traj, init_wp = init_targets()
+    ##### Use regression models to determine the strategy #####
+    selected_idx, expected_cost = determine_strategy(h1=5, h2=3, l=10)
+    assert 0 <= selected_idx < 2
+
+    ##### Set waypoints depending on the selected strategy #####
+    
+    trajectories = []
+    if False: # Flight mode
+        #raise Exception("FLIGHT mode trajectory not yet made")
+        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1,4)
+        print("here")
+        print(t_traj)
+        trajectories.append(t_traj)
+        t_traj2 = None
+    else: # Drive mode
+        t_traj, init_wp = init_targets(0,1,1,5,False)
+        t_traj2, init_wp2 = init_targets(2,1,1,5,True)  
+        trajectories.append(t_traj)
+        trajectories.append(t_traj2)
 
     config = Configuration(
         action_type=ACT,
@@ -166,8 +249,13 @@ def run(
         run_train(config=config, env_factory=env_factory)
 
     if vis:
-        for _ in range(5):
-            run_test(config=config, env_factory=env_factory)
+        run_test(
+            k_p,
+            k_wp,
+            k_s,
+            max_reward_distance,
+            waypoint_dist_tol,
+            trajectories, config=config, env_factory=env_factory)
 
     if test:
         env_factory.single_traj = True
@@ -183,7 +271,12 @@ def run(
             config.update_trajectory(t_traj, init_wp)
             env_factory.set_config(config)
             visited_positions, success, time = run_test(
-                config=config, env_factory=env_factory, eval_mode=True
+                k_p,
+                k_wp,
+                k_s,
+                max_reward_distance,
+                waypoint_dist_tol,
+                trajectories, config=config, env_factory=env_factory, eval_mode=True
             )
             successes.append(success)
             if success:
