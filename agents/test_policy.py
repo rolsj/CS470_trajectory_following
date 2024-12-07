@@ -48,6 +48,9 @@ def test_simple_follower(
     k_p,
     k_wp,
     k_s,
+    h1,
+    h2,
+    l,
     max_reward_distance,
     waypoint_dist_tol,
     trajectories,
@@ -56,6 +59,7 @@ def test_simple_follower(
     test_env: UZHAviary,
     output_folder: str,
     eval_mode=False,
+    map_name=None,
 ):
     if os.path.isfile(filename + "/best_model.zip"):
         path = filename + "/best_model.zip"
@@ -63,7 +67,7 @@ def test_simple_follower(
         print("[ERROR]: no model under the specified path", filename)
     model = PPO.load(path)
     
-    # load urdf model
+    # load drone urdf model
     tree = ET.parse("../gym_pybullet_drones/assets/cf2x.urdf")
     root = tree.getroot()
     drone_properties = {}
@@ -84,6 +88,12 @@ def test_simple_follower(
         drone_properties.update(element.attrib)
     k_m = float(drone_properties["km"])
     time_period = 1 / test_env.CTRL_FREQ
+    
+    # load map urdf model
+    if map_name:
+        tree = ET.parse(f"../gym_pybullet_drones/assets/{map_name}.urdf")
+        root = tree.getroot()
+        drone_properties = {}
     
     logger = Logger(
         logging_freq_hz=int(test_env.CTRL_FREQ),
@@ -160,10 +170,16 @@ def test_simple_follower(
                 action, _states = model.predict(obs, deterministic=True)
                 
                 # 현재 높이와 다음 웨이포인트 높이 확인
-                current_height = current_position[2] # - altittude
+                if current_position[0] < 0.05:
+                    altitude = h1
+                elif current_position[1] > l - 0.05:
+                    altitude = h2
+                else:
+                    altitude = 0
+                current_height = current_position[2] - altitude
                 current_projection, current_projection_idx, reached_distance = test_env.rewards.get_travelled_distance(current_position)
                 next_waypoint_idx = min(current_projection_idx + 1, len(test_env.trajectory) - 1)
-                next_waypoint_height = test_env.trajectory[next_waypoint_idx][2] # - alttitude
+                next_waypoint_height = test_env.trajectory[next_waypoint_idx][2] - altitude
                 
                 # 지상 이동 가능 여부 판단
                 is_on_ground = current_height <= 0.2
@@ -239,6 +255,9 @@ def run_test(
     k_p,
     k_wp,
     k_s,
+    h1,
+    h2,
+    l,
     max_reward_distance,
     waypoint_dist_tol,
     trajectories, config: Configuration, env_factory: BaseFactory, eval_mode=False):
@@ -251,6 +270,9 @@ def run_test(
         k_p,
         k_wp,
         k_s,
+        h1,
+        h2,
+        l,
         max_reward_distance,
         waypoint_dist_tol,
         trajectories,
