@@ -124,6 +124,10 @@ def test_simple_follower(
     last_x_error = 0
     integral_x_error = 0
     
+    # energy computation
+    energy_cum = 0.
+    energy_cur = 0.
+    
     # 각 궤적별로 실행
     for trajectory in trajectories:
         test_env.current_waypoint_idx = 0
@@ -151,8 +155,6 @@ def test_simple_follower(
         )
 
         rpm_prev = np.zeros((1, 4))
-        energy_cum = 0.
-        energy_cur = 0.
         for i in range((test_env.EPISODE_LEN_SEC) * test_env.CTRL_FREQ):
             current_position = test_env._getDroneStateVector(0)[:3]
             target_position = test_env.trajectory[-1]
@@ -170,9 +172,9 @@ def test_simple_follower(
                 action, _states = model.predict(obs, deterministic=True)
                 
                 # 현재 높이와 다음 웨이포인트 높이 확인
-                if -0.05 < current_position[0] < 0.05:
+                if -0.01 < current_position[0] < 0.01:
                     altitude = h1
-                elif l - 0.05 < current_position[1] < l + 0.05 :
+                elif l - 0.01 < current_position[1] < l + 0.01 :
                     altitude = h2
                 else:
                     altitude = 0
@@ -243,10 +245,10 @@ def test_simple_follower(
                     t = test_env.step_counter * test_env.PYB_TIMESTEP
                     success = test_env.reached_last_point if type(test_env) == UZHAviary else None
                     return all_pos, success, t
-                print(f"[test is done] energy cumulated : {energy_cum}")
+
                 obs = test_env.reset(seed=42, options={})
                 break
-
+    print(f"[test is done] energy cumulated : {energy_cum}")
     time.sleep(10)
     test_env.close()
     logger.plot()
