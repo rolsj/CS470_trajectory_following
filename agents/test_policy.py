@@ -243,6 +243,7 @@ def test_simple_follower(
                     t = test_env.step_counter * test_env.PYB_TIMESTEP
                     success = test_env.reached_last_point if type(test_env) == UZHAviary else None
                     return all_pos, success, t
+                print(f"[test is done] energy cumulated : {energy_cum}")
                 obs = test_env.reset(seed=42, options={})
                 break
 
