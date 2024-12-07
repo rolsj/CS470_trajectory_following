@@ -52,7 +52,7 @@ def test_simple_follower(
         current_position = test_env._getDroneStateVector(0)[:3]
         target_position = test_env.trajectory[-1]
         distance_to_target = np.linalg.norm(current_position - target_position)
-        #print(test_env.future_waypoints_relative)
+        print(test_env.future_waypoints_relative)
         if distance_to_target < 0.14:
             action = np.zeros_like(action)
             while (np.allclose(current_position[2], target_position[2], atol=0.015)) == False:
@@ -134,7 +134,7 @@ def test_simple_follower(
             distance_to_target = np.linalg.norm(current_position - target_position)
             #print(test_env.rewards.get_travelled_distance(current_position))
             #print(test_env.current_projection_idx)
-            #print(test_env.future_waypoints_relative)
+            print(test_env.future_waypoints_relative)
             if distance_to_target < 0.1:
                 action = np.zeros_like(action)
                 while (np.allclose(current_position[2], target_position[2], atol=0.015)) == False:

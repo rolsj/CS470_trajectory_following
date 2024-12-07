@@ -71,7 +71,7 @@ def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:
         json.dump(benchmarks, file)
 
-def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
+def generate_parabolic_trajectory(x_point, z_start, x_land, up):
     """
     Generate waypoints for a parabolic trajectory.
     
@@ -86,7 +86,7 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
     a = -1.5
     c = z_start
     b = -(c/x_land)-a*(x_land)
-
+    num_points = (z_start*3)+1
     #x_shift = x_land/5
     # Coefficients for the parabola
     """
@@ -108,6 +108,15 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
     
     return waypoints
 
+def init_targets(x_point, z_start, x_land, up):
+    pts = generate_parabolic_trajectory(x_point,z_start,x_land,up)
+    if up:
+        pts = pts[::-1]
+    initial_xyzs = np.array([pts[0]])
+    t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
+    t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
+    return t_traj, initial_xyzs
+
 def find_a_and_b(h1, h2, l, max_height):
     # Define variables
     b = sp.symbols('b', real=True, positive=True)
@@ -127,8 +136,9 @@ def find_a_and_b(h1, h2, l, max_height):
     
     return float(a_value), float(b_value)
 
-def generate_parabolic_trajectory_aviation(h1,h2,l,height, num_points):
+def generate_parabolic_trajectory_aviation(h1,h2,l,height):
     max_height = max(h1,h2)+height
+    num_points = round(((max_height-min(h1,h2))+l)*(2/5)*(4))
     a, b = find_a_and_b(h1, h2, l, max_height)
 
     x_values = np.linspace(0, l, num_points)
@@ -140,15 +150,6 @@ def generate_parabolic_trajectory_aviation(h1,h2,l,height, num_points):
     t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
     t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     
-    return t_traj, initial_xyzs
-
-def init_targets(x_point, z_start, x_land, num_points, up):
-    pts = generate_parabolic_trajectory(x_point,z_start,x_land,num_points,up)
-    if up:
-        pts = pts[::-1]
-    initial_xyzs = np.array([pts[0]])
-    t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
-    t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     return t_traj, initial_xyzs
 
 def determine_strategy(h1, h2, l) -> tuple[int, float]:
@@ -208,13 +209,13 @@ def run(
     ##### Set waypoints depending on the selected strategy #####
     if False: # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
-        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1,4)
+        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1)
         print("here")
         print(t_traj)
         t_traj2 = None
     else: # Drive mode
-        t_traj, init_wp = init_targets(0,1,1,5,False)
-        t_traj2, init_wp2 = init_targets(2,1,1,5,True)
+        t_traj, init_wp = init_targets(0,1,1,False)
+        t_traj2, init_wp2 = init_targets(2,1,1,True)
 
     config = Configuration(
         action_type=ACT,
