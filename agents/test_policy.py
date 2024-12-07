@@ -170,9 +170,9 @@ def test_simple_follower(
                 action, _states = model.predict(obs, deterministic=True)
                 
                 # 현재 높이와 다음 웨이포인트 높이 확인
-                if current_position[0] < 0.05:
+                if -0.05 < current_position[0] < 0.05:
                     altitude = h1
-                elif current_position[1] > l - 0.05:
+                elif l - 0.05 < current_position[1] < l + 0.05 :
                     altitude = h2
                 else:
                     altitude = 0
