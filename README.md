@@ -34,8 +34,8 @@ It is strongly recommended to use a python virtual environment such as _conda_ o
 1. Initialise repository. Repository must be pulled recursively
 
 ```s
-$ git clone git@github.com:danielbinschmid/RL-pybullets-cf.git
-$ git submodule --init --recursive
+$ git clone git@github.com:danielbinschmid/RL-pybullets-cf.git --recursive
+$ git submodule update --init --recursive
 ```
 
 2. Initialise virtual environment. Tested with python version 3.10.13. E.g.:
