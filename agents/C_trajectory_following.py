@@ -207,15 +207,25 @@ def run(
     assert 0 <= selected_idx < 2
 
     ##### Set waypoints depending on the selected strategy #####
+    
+    trajectories = []
     if False: # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
         t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1)
         print("here")
         print(t_traj)
+        trajectories.append(t_traj)
         t_traj2 = None
     else: # Drive mode
+<<<<<<< HEAD
         t_traj, init_wp = init_targets(0,1,1,False)
         t_traj2, init_wp2 = init_targets(2,1,1,True)
+=======
+        t_traj, init_wp = init_targets(0,1,1,5,False)
+        t_traj2, init_wp2 = init_targets(2,1,1,5,True)  
+        trajectories.append(t_traj)
+        trajectories.append(t_traj2)
+>>>>>>> ffb7809781c31bf1af3ddbae591e82d851c84e2b
 
     config = Configuration(
         action_type=ACT,
@@ -251,7 +261,7 @@ def run(
             k_s,
             max_reward_distance,
             waypoint_dist_tol,
-            t_traj2, config=config, env_factory=env_factory)
+            trajectories, config=config, env_factory=env_factory)
 
     if test:
         env_factory.single_traj = True
@@ -272,7 +282,7 @@ def run(
                 k_s,
                 max_reward_distance,
                 waypoint_dist_tol,
-                t_traj2, config=config, env_factory=env_factory, eval_mode=True
+                trajectories, config=config, env_factory=env_factory, eval_mode=True
             )
             successes.append(success)
             if success:
