@@ -107,6 +107,13 @@ def test_simple_follower(
             ]
         )
     
+    # PID 제어 관련 상수 추가
+    P_COEFF_WHEEL = 50
+    I_COEFF_WHEEL = 0.1
+    D_COEFF_WHEEL = 10
+    last_x_error = 0
+    integral_x_error = 0
+    
     # 각 궤적별로 실행
     for trajectory in trajectories:
         test_env.current_waypoint_idx = 0
@@ -140,7 +147,7 @@ def test_simple_follower(
             current_position = test_env._getDroneStateVector(0)[:3]
             target_position = test_env.trajectory[-1]
             distance_to_target = np.linalg.norm(current_position - target_position)
-
+            
             if distance_to_target < 0.1:
                 action = np.zeros_like(action)
                 while not np.allclose(current_position[2], target_position[2], atol=0.05):
@@ -149,8 +156,54 @@ def test_simple_follower(
                 print("Current trajectory completed")
                 break
             else:
+                states = test_env._getDroneStateVector(0)
                 action, _states = model.predict(obs, deterministic=True)
-                obs, reward, terminated, truncated, info = test_env.step(action)
+                
+                # 현재 높이와 다음 웨이포인트 높이 확인
+                current_height = current_position[2]
+                current_projection, current_projection_idx, reached_distance = test_env.rewards.get_travelled_distance(current_position)
+                next_waypoint_idx = min(current_projection_idx + 1, len(test_env.trajectory) - 1)
+                print(f"next_waypoint_idx: {next_waypoint_idx}")
+                next_waypoint_height = test_env.trajectory[next_waypoint_idx][2]
+                
+                # 지상 이동 가능 여부 판단
+                is_on_ground = current_height <= 0.2
+                next_point_near_ground = next_waypoint_height <= 0.1
+                can_use_ground = is_on_ground and next_point_near_ground
+                
+                if can_use_ground:
+                    # PID 제어를 통한 바퀴 속도 계산
+                    x_error = test_env.trajectory[next_waypoint_idx][0] - current_position[0]
+                    integral_x_error += x_error * (1.0/test_env.CTRL_FREQ)
+                    derivative_x_error = (x_error - last_x_error) * test_env.CTRL_FREQ
+                    last_x_error = x_error
+                    
+                    base_velocity = P_COEFF_WHEEL * x_error + \
+                                  I_COEFF_WHEEL * integral_x_error + \
+                                  D_COEFF_WHEEL * derivative_x_error
+                    
+                    # 바퀴 속도 제한
+                    base_velocity = np.clip(base_velocity, -10.0, 10.0)
+                    wheel_velocities = np.array([base_velocity] * 4)
+                    
+                    # 바퀴 제어 적용
+                    for j, wheel_id in enumerate(test_env.wheel_joints):
+                        p.setJointMotorControl2(
+                            test_env.DRONE_IDS[0],
+                            wheel_id,
+                            p.VELOCITY_CONTROL,
+                        targetVelocity=wheel_velocities[j],
+                    )
+                    action = np.zeros(4)
+                    action = action.reshape(1, 4)
+                    obs, reward, terminated, truncated, info = test_env.step(action)
+                    print("hello Using PID wheel control, velocity:", base_velocity)
+                else:
+                    # 공중에서는 일반 동작
+                    obs, reward, terminated, truncated, info = test_env.step(action)
+                    if is_on_ground:
+                        print("hello Taking off for next waypoint")
+                
                 obs2 = obs.squeeze()
                 act2 = action.squeeze()
             
