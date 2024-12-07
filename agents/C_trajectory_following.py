@@ -100,6 +100,8 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, up):
 def find_a_and_b(h1, h2, l, max_height):
     # Define variables
     b = sp.symbols('b', real=True, positive=True)
+    h1 = h1+0.036
+    h2 = h2+0.036
     
     # Equations
     eq1 = (h2 - max_height) * b**2 - (h1 - max_height) * (l - b)**2
@@ -118,7 +120,7 @@ def find_a_and_b(h1, h2, l, max_height):
 
 def generate_parabolic_trajectory_aviation(h1,h2,l):
     height = 0.5
-    max_height = max(h1,h2)+height
+    max_height = max(h1,h2)+height+0.036
     num_points = round(((max_height-min(h1,h2))+l)*(2/5)*(4))
     a, b = find_a_and_b(h1, h2, l, max_height)
 
@@ -208,13 +210,13 @@ def run(
     if random:
         world_name = build_world(rand=True)[0]
     else:
-        world_name = build_world(h1=1.0, h2=1.0, l=2.0)[0]
+        world_name = build_world(h1=1.0, h2=1.0, l=7.0)[0]
     h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
     if False: # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
-        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2)
+        t_traj, init_wp = generate_parabolic_trajectory_aviation(h1,h2,l)
         print("here")
         print(t_traj)
         trajectories.append(t_traj)
