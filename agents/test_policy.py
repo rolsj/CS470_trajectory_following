@@ -166,7 +166,7 @@ def test_simple_follower(
                 while not np.allclose(current_position[2], target_position[2], atol=0.05):
                     obs, reward, terminated, truncated, info = test_env.step(action)
                     current_position = test_env._getDroneStateVector(0)[:3]
-                print("Current trajectory completed")
+                # print("Current trajectory completed")
                 break
             else:
                 states = test_env._getDroneStateVector(0)
@@ -179,10 +179,10 @@ def test_simple_follower(
                     altitude = h2
                 else:
                     altitude = 0
-                current_height = current_position[2]
+                current_height = current_position[2] - altitude
                 current_projection, current_projection_idx, reached_distance = test_env.rewards.get_travelled_distance(current_position)
                 next_waypoint_idx = min(current_projection_idx + 1, len(test_env.trajectory) - 1)
-                next_waypoint_height = test_env.trajectory[next_waypoint_idx][2]
+                next_waypoint_height = test_env.trajectory[next_waypoint_idx][2] - altitude
                 
                 # 지상 이동 가능 여부 판단
                 is_on_ground = current_height <= 0.05
@@ -221,7 +221,7 @@ def test_simple_follower(
                     while angle_diff > angle_threshold and steps < max_steps:
                         #time.sleep(5)
                         # 왼 바퀴 음수, 오른 바퀴 양수 속도로 제자리 회전
-                        print(angle_diff)
+                        # print(angle_diff)
                         left_speed = -rotation_speed * rotation_sign
                         right_speed = rotation_speed * rotation_sign
 
@@ -271,13 +271,13 @@ def test_simple_follower(
                     action = np.zeros(4)
                     action = action.reshape(1, 4)
                     obs, reward, terminated, truncated, info = test_env.step(action)
-                    print("hello Using PID wheel control, velocity:", base_velocity)
+                    # print("hello Using PID wheel control, velocity:", base_velocity)
                 else:
                     # 공중에서는 일반 동작
-                    print("we use air")
+                    # print("we use air")
                     obs, reward, terminated, truncated, info = test_env.step(action)
-                    if is_on_ground:
-                        print("hello Taking off for next waypoint")
+                    # if is_on_ground:
+                    #     print("hello Taking off for next waypoint")
                 
                 obs2 = obs.squeeze()
                 act2 = action.squeeze()
@@ -306,7 +306,7 @@ def test_simple_follower(
 
                 obs = test_env.reset(seed=42, options={})
                 break
-    print(f"[test is done] energy cumulated : {energy_cum}")
+    print(f"[test is done] {h1}, {h2}, {l} energy cumulated : {energy_cum}")
     time.sleep(10)
     test_env.close()
     logger.plot()
