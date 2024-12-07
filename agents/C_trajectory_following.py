@@ -6,6 +6,7 @@ Script learns an agent for trajectory following. Policy strongly inspired by [1]
 """
 
 import argparse
+import sympy as sp
 import numpy as np
 from gym_pybullet_drones.utils.utils import str2bool
 from gym_pybullet_drones.utils.enums import ObservationType, ActionType
@@ -17,12 +18,15 @@ from aviaries.factories.uzh_trajectory_follower_factory import (
 
 from agents.test_policy import run_test
 from agents.train_policy import run_train
+from agents.world_builder import build_world
 from runnables.utils.gen_eval_tracks import load_eval_tracks
 from typing import Dict
 from tqdm import tqdm
 import json
 from runnables.utils.utils import compute_metrics_single
-from world_builder import build_world
+
+from agents.regression import Regression
+import os
 
 ###### INFRASTRUCTURE PARAMS #######
 GUI = True
@@ -68,7 +72,7 @@ def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:
         json.dump(benchmarks, file)
 
-def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
+def generate_parabolic_trajectory(x_point, z_start, x_land, up):
     """
     Generate waypoints for a parabolic trajectory.
     
@@ -83,7 +87,7 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
     a = -1.5
     c = z_start
     b = -(c/x_land)-a*(x_land)
-
+    num_points = (z_start*3)+1
     #x_shift = x_land/5
     # Coefficients for the parabola
     """
@@ -105,14 +109,77 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, num_points, up):
     
     return waypoints
 
-def init_targets(x_point, z_start, x_land, num_points, up):
-    pts = generate_parabolic_trajectory(x_point,z_start,x_land,num_points,up)
+def init_targets(x_point, z_start, x_land, up):
+    pts = generate_parabolic_trajectory(x_point,z_start,x_land,up)
     if up:
         pts = pts[::-1]
     initial_xyzs = np.array([pts[0]])
     t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
     t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
     return t_traj, initial_xyzs
+
+def find_a_and_b(h1, h2, l, max_height):
+    # Define variables
+    b = sp.symbols('b', real=True, positive=True)
+    
+    # Equations
+    eq1 = (h2 - max_height) * b**2 - (h1 - max_height) * (l - b)**2
+    b_value = sp.solve(eq1, b)  # Solve for b
+    
+    # Choose a valid solution
+    b_value = [val for val in b_value if val.is_real and 0 <= val <= l]
+    """
+    if len(b_value) != 1:
+        raise ValueError("No unique solution for b found!")
+    """
+    b_value = b_value[0]
+    a_value = (h1 - max_height) / b_value**2  # Solve for a
+    
+    return float(a_value), float(b_value)
+
+def generate_parabolic_trajectory_aviation(h1,h2,l,height):
+    max_height = max(h1,h2)+height
+    num_points = round(((max_height-min(h1,h2))+l)*(2/5)*(4))
+    a, b = find_a_and_b(h1, h2, l, max_height)
+
+    x_values = np.linspace(0, l, num_points)
+    z_values = a * (x_values-b)**2 + max_height
+    
+    pts = [(x, 0, z) for x, z in zip(x_values, z_values)]
+
+    initial_xyzs = np.array([pts[0]])
+    t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
+    t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
+    
+    return t_traj, initial_xyzs
+
+def determine_strategy(h1, h2, l) -> tuple[int, float]:
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_data")
+    with open(os.path.join(data_dir, "flight.json"), "r", encoding="utf-8") as f:
+        data = json.load(f)
+        x_train = np.array(data[0])
+        y_train = np.array(data[1])
+    model_flight = Regression()
+    model_flight.train_with(x_train, y_train)
+    
+    with open(os.path.join(data_dir, "drive.json"), "r", encoding="utf-8") as f:
+        data = json.load(f)
+        x_train = np.array(data[0])
+        y_train = np.array(data[1])
+    model_drive = Regression()    
+    model_drive.train_with(x_train, y_train)
+
+    expected_cost_flight = model_flight.predict(np.array([[h1, h2, l]]))
+    expected_cost_drive = model_drive.predict(np.array([[h1, h2, l]]))
+    print(f"Expected cost (energy) when flight: {expected_cost_flight}")
+    print(f"Expected cost (energy) when drive: {expected_cost_drive}")
+
+    if expected_cost_flight < expected_cost_drive:
+        print("flight selected")
+        return (0, expected_cost_flight)
+    else:
+        print("drive selected")
+        return (1, expected_cost_drive)
 
 def run(
     output_folder=OUTPUT_FOLDER,
@@ -152,16 +219,21 @@ def run(
     trajectories = []
     if False: # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
-        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1,4)
+        t_traj, init_wp = generate_parabolic_trajectory_aviation(1,5,2,0.1)
         print("here")
         print(t_traj)
         trajectories.append(t_traj)
         t_traj2 = None
     else: # Drive mode
-        t_traj, init_wp = init_targets(0,h1,l_margin,5,False)
-        t_traj2, init_wp2 = init_targets(l,h2,l_margin,5,True)  
+<<<<<<< HEAD
+        t_traj, init_wp = init_targets(0,1,1,False)
+        t_traj2, init_wp2 = init_targets(2,1,1,True)
+=======
+        t_traj, init_wp = init_targets(0,1,1,5,False)
+        t_traj2, init_wp2 = init_targets(2,1,1,5,True)  
         trajectories.append(t_traj)
         trajectories.append(t_traj2)
+>>>>>>> ffb7809781c31bf1af3ddbae591e82d851c84e2b
 
     config = Configuration(
         action_type=ACT,
@@ -197,7 +269,7 @@ def run(
             k_s,
             max_reward_distance,
             waypoint_dist_tol,
-            t_traj1, config=config, env_factory=env_factory)
+            trajectories, config=config, env_factory=env_factory)
 
     if test:
         env_factory.single_traj = True
@@ -218,7 +290,7 @@ def run(
                 k_s,
                 max_reward_distance,
                 waypoint_dist_tol,
-                t_traj1, config=config, env_factory=env_factory, eval_mode=True
+                trajectories, config=config, env_factory=env_factory, eval_mode=True
             )
             successes.append(success)
             if success:
