@@ -15,6 +15,34 @@ import numpy as np
 from gym_pybullet_drones.utils.utils import sync
 import pybullet as p
 from aviaries.rewards.uzh_trajectory_reward import Rewards
+import xml.etree.ElementTree as ET
+
+def compute_engery(env, action, dt, rpm_prev, k_m):
+    '''
+    ** params **
+    env: env - test environment
+    action: action - test action
+    dt: float - time period
+    rpm_prev: ndarray - 1 * 4 size rpm
+    km: float - thrust coeff.
+
+    ** return **
+    energy: float - energy
+    rpm_prev: ndarray - 1 * 4 size rpm
+    '''
+    # compute energy expenditure
+    rpm = env.last_clipped_action
+    ang_vel = rpm * np.pi / 30
+    ang_acc = rpm - rpm_prev
+    
+    # energy term 1 ( sum{k_m * w^2} * dt )
+    J1 = dt * np.sum(k_m * ang_vel ** 2)
+
+    # energy term 2 ( sum{acc * k_m * (acc - k_m * w)} * dt )
+    J2 = dt * np.sum(ang_acc * k_m * (ang_acc - k_m * ang_vel))
+
+    # choose either J1 or J2 as energy
+    return 1, rpm
 
 def test_simple_follower(
     k_p,
@@ -34,7 +62,29 @@ def test_simple_follower(
     else:
         print("[ERROR]: no model under the specified path", filename)
     model = PPO.load(path)
-
+    
+    # load urdf model
+    tree = ET.parse("../gym_pybullet_drones/assets/cf2x.urdf")
+    root = tree.getroot()
+    drone_properties = {}
+    for element in root.iter('properties'):
+        # Extract attributes from the <properties> tag
+        # arm                 [m] : distance from center of mass to each motor
+        # kf              [N s^2] : thrust coeff.
+        # km            [N m s^2] : torque coeff.
+        # thrust2weight           : thrust / weight
+        # max_speed_kmh    [km/h] : max speed
+        # gnd_eff_coeff           : ground effect coeff.
+        # prop_radius         [m] : radius of each motor
+        # drag_coeff_xy           : drag on xy plane coeff.
+        # drag_coeff_z            : drag on z axis coeff.
+        # dw_coeff_1              : drag of wing coeff.1
+        # dw_coeff_2              : drag of wing coeff.2
+        # dw_coeff_3              : drag of wing coeff.3
+        drone_properties.update(element.attrib)
+    k_m = float(drone_properties["km"])
+    time_period = 1 / test_env.CTRL_FREQ
+    
     logger = Logger(
         logging_freq_hz=int(test_env.CTRL_FREQ),
         num_drones=1,
@@ -83,6 +133,9 @@ def test_simple_follower(
             - test_env.trajectory[test_env.current_waypoint_idx]
         )
 
+        rpm_prev = np.zeros((1, 4))
+        energy_cum = 0.
+        energy_cur = 0.
         for i in range((test_env.EPISODE_LEN_SEC) * test_env.CTRL_FREQ):
             current_position = test_env._getDroneStateVector(0)[:3]
             target_position = test_env.trajectory[-1]
@@ -100,6 +153,10 @@ def test_simple_follower(
                 obs, reward, terminated, truncated, info = test_env.step(action)
                 obs2 = obs.squeeze()
                 act2 = action.squeeze()
+            
+            #if i % test_env.CTRL_FREQ == 0:    
+            energy_cur, rpm_prev = compute_engery(test_env, action, time_period, rpm_prev, k_m)
+            energy_cum += energy_cur
 
             logger.log(
                 drone=0,
