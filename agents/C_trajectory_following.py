@@ -134,7 +134,7 @@ def generate_parabolic_trajectory_aviation(h1,h2,l):
 
 def generate_line_trajectory(l, x_land):
     num_points = round(max((l-2*x_land), 2))
-    x_values = np.linspace(0, l, num_points)
+    x_values = np.linspace(x_land, l-x_land, num_points)
     
     pts = [(x, 0, 0) for x in x_values]
 
