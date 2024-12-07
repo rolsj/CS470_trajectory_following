@@ -72,7 +72,10 @@ def save_benchmark(benchmarks: Dict[str, float], file_path: str):
         json.dump(benchmarks, file)
 
 def generate_parabolic_trajectory(x_point, z_start, x_land, up):
-    a = -1.5
+    if up:
+        a = -7
+    else:
+        a = -3
     c = z_start+0.036
     b = -(c/x_land)-a*(x_land)
 
@@ -85,8 +88,17 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, up):
     
     # Generate waypoints
     if up:
-        pts = [(x_point-x, 0, z) for x, z in zip(x_values, z_values)]
-        pts = pts[::-1]
+        x_values = x_values[::-1]
+        z_values = z_values[::-1]
+        start_idx = 0
+        for i in range(1, len(z_values)):
+            if z_values[i] < z_values[i - 1]:  # Check if z starts decreasing
+                start_idx = i - 1  # Include the peak
+                break
+        x_values_filtered = np.concatenate(([x_values[0]], x_values[start_idx:]))
+        z_values_filtered = np.concatenate(([z_values[0]], z_values[start_idx:]))
+        
+        pts = [(x_point-x, 0, z) for x, z in zip(x_values_filtered, z_values_filtered)]
     else:
         pts = [(x_point+x, 0, z) for x, z in zip(x_values, z_values)]
         
@@ -132,7 +144,8 @@ def generate_parabolic_trajectory_aviation(h1,h2,l):
     return t_traj, initial_xyzs
 
 def generate_line_trajectory(l, x_land):
-    num_points = round(max((l-2*x_land), 2))
+    # num_points = round(max((l-2*x_land), 2))
+    num_points = 2
     x_values = np.linspace(x_land, l-x_land, num_points)
     
     pts = [(x, 0, 0) for x in x_values]

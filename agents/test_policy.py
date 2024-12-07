@@ -125,7 +125,9 @@ def test_simple_follower(
     integral_x_error = 0
     
     # 각 궤적별로 실행
+    count = 0
     for trajectory in trajectories:
+        test_env.reached_last_point = False
         test_env.current_waypoint_idx = 0
         test_env.single_traj = trajectory
         test_env.trajectory = test_env.set_trajectory()
@@ -186,7 +188,7 @@ def test_simple_follower(
                 is_on_ground = current_height <= 0.05
                 next_point_near_ground = next_waypoint_height <= 0.05
                 can_use_ground = is_on_ground and next_point_near_ground
-                
+
                 if can_use_ground:
                     # 드론의 현재 방향 구하기
                     orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]  # 쿼터니언
@@ -219,7 +221,7 @@ def test_simple_follower(
                     while angle_diff > angle_threshold and steps < max_steps and np.linalg.norm(desired_direction_serve) > 0.9:
                         #time.sleep(5)
                         # 왼 바퀴 음수, 오른 바퀴 양수 속도로 제자리 회전
-                        print(angle_diff)
+                        #print(angle_diff)
                         left_speed = -rotation_speed * rotation_sign
                         right_speed = rotation_speed * rotation_sign
 
@@ -264,15 +266,15 @@ def test_simple_follower(
                             p.VELOCITY_CONTROL,
                         targetVelocity=wheel_velocities[j],
                     )
-                    p.stepSimulation()
+                    #p.stepSimulation()
                     
                     action = np.zeros(4)
                     action = action.reshape(1, 4)
                     obs, reward, terminated, truncated, info = test_env.step(action)
-                    print("hello Using PID wheel control, velocity:", base_velocity)
+                    #print("hello Using PID wheel control, velocity:", base_velocity)
                 else:
                     # 공중에서는 일반 동작
-                    print(i)
+                    #print(i)
                     obs, reward, terminated, truncated, info = test_env.step(action)
                     if is_on_ground:
                         print("hello Taking off for next waypoint")
