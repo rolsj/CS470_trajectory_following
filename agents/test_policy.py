@@ -148,7 +148,7 @@ def test_simple_follower(
             target_position = test_env.trajectory[-1]
             distance_to_target = np.linalg.norm(current_position - target_position)
             
-            if distance_to_target < 0.1:
+            if distance_to_target < 0.13:
                 action = np.zeros_like(action)
                 while not np.allclose(current_position[2], target_position[2], atol=0.05):
                     obs, reward, terminated, truncated, info = test_env.step(action)

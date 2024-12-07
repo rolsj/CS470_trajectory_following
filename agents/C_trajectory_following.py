@@ -72,9 +72,7 @@ def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:
         json.dump(benchmarks, file)
 
-def generate_parabolic_trajectory(x_point, z_start, up):
-    x_land = 1
-
+def generate_parabolic_trajectory(x_point, z_start, x_land, up):
     a = -1.5
     c = z_start+0.036
     b = -(c/x_land)-a*(x_land)
@@ -127,6 +125,18 @@ def generate_parabolic_trajectory_aviation(h1,h2,l):
     z_values = a * (x_values-b)**2 + max_height
     
     pts = [(x, 0, z) for x, z in zip(x_values, z_values)]
+
+    initial_xyzs = np.array([pts[0]])
+    t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
+    t_traj = TrajectoryFactory.get_discr_from_wps(t_wps)
+    
+    return t_traj, initial_xyzs
+
+def generate_line_trajectory(l, x_land):
+    num_points = max((l-2*x_land), 2)
+    x_values = np.linspace(0, l, num_points)
+    
+    pts = [(x, 0, 0) for x in x_values]
 
     initial_xyzs = np.array([pts[0]])
     t_wps = TrajectoryFactory.waypoints_from_numpy(pts)
@@ -205,9 +215,11 @@ def run(
         trajectories.append(t_traj)
         t_traj2 = None
     else: # Drive mode
-        t_traj, init_wp = generate_parabolic_trajectory(0,h1,False)
-        t_traj2, init_wp2 = generate_parabolic_trajectory(l,h2,True)  
+        t_traj, init_wp = generate_parabolic_trajectory(0,h1,1,False)
+        t_traj1, init_wp1 = generate_line_trajectory(l,1)
+        t_traj2, init_wp2 = generate_parabolic_trajectory(l,h2,1,True)  
         trajectories.append(t_traj)
+        trajectories.append(t_traj1)
         trajectories.append(t_traj2)
 
     config = Configuration(
