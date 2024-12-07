@@ -12,6 +12,7 @@ from gymnasium import spaces
 
 from trajectories import TrajectoryFactory, DiscretizedTrajectory
 from aviaries.rewards.uzh_trajectory_reward import Rewards
+from gym_pybullet_drones.envs.BaseRLAviary import BaseRLAviary
 
 txt_colour = [0, 0, 0]
 txt_size = 2
@@ -37,7 +38,7 @@ refreshed_text = lambda txt, client_id, replace_id: p.addUserDebugText(
 )
 
 
-class UZHAviary(WheelPropRLAviary):
+class UZHAviary(BaseRLAviary):
     """Single agent RL problem: hover at position."""
 
     ################################################################################
