@@ -160,11 +160,10 @@ def test_simple_follower(
                 action, _states = model.predict(obs, deterministic=True)
                 
                 # 현재 높이와 다음 웨이포인트 높이 확인
-                current_height = current_position[2]
+                current_height = current_position[2] # - altittude
                 current_projection, current_projection_idx, reached_distance = test_env.rewards.get_travelled_distance(current_position)
                 next_waypoint_idx = min(current_projection_idx + 1, len(test_env.trajectory) - 1)
-                #print(f"next_waypoint_idx: {next_waypoint_idx}")
-                next_waypoint_height = test_env.trajectory[next_waypoint_idx][2]
+                next_waypoint_height = test_env.trajectory[next_waypoint_idx][2] # - alttitude
                 
                 # 지상 이동 가능 여부 판단
                 is_on_ground = current_height <= 0.2

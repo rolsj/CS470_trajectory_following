@@ -64,8 +64,8 @@ def get_urdf(h1, h2, l):
 """
 
 def build_world(output_dir='../gym_pybullet_drones/assets/world',
-                batch=False,
-                n=10,
+                rand=False,
+                n=1,
                 h1=1.0,
                 h2=1.0,
                 l=3.0):
@@ -75,12 +75,12 @@ def build_world(output_dir='../gym_pybullet_drones/assets/world',
     - Box 2 at (0, 0, l) with height `h2`.
 
     Parameters:
-        filename (str): The name of the URDF file to create.
-        batch (bool): Whether it is random batch generating or not
+        filename (str): The directory of the URDF file to create.
+        rand (bool): Whether it is random batch generating or not
         n (int): Size of batch
         h1 (float): Height of the first box.
         h2 (float): Height of the second box.
-        l (float): Z-offset of the second box.
+        l (float): Distance between the boxes.
     
     Return:
         world_file_names (string[]): list of output file name with format 'filename_h1_h2_l'
@@ -88,10 +88,9 @@ def build_world(output_dir='../gym_pybullet_drones/assets/world',
     max_scale_h = 3
     max_scale_l = 3
     world_file_names = []
-    N = n if batch else 1
     
-    for i in range(N):
-        if batch:
+    for i in range(n):
+        if rand:
             h1 = round(random.random() * max_scale_h, 1)
             h2 = round(random.random() * max_scale_h, 1)
             l = round(random.random() * max_scale_l, 1)
@@ -112,12 +111,44 @@ def build_world(output_dir='../gym_pybullet_drones/assets/world',
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--output_dir', default="../gym_pybullet_drones/assets/world", type=str, metavar='')
-    parser.add_argument('--batch', default=False, type=str2bool, metavar='')
-    parser.add_argument('--n', default=5, type=int, metavar='')
-    parser.add_argument('--h1', default=1.0, type=float, metavar='')
-    parser.add_argument('--h2', default=1.0, type=float, metavar='')
-    parser.add_argument('--l', default=2.0, type=float, metavar='')
+    parser.add_argument(
+        '--output_dir',
+        default="../gym_pybullet_drones/assets/world",
+        type=str,
+        help="The directory of the URDF file to create",
+        metavar=''
+    )
+    parser.add_argument('--rand',
+        default=False,
+        type=str2bool,
+        help="Whether it is random batch generating or not",
+        metavar=''
+    )
+    parser.add_argument('--n',
+        default=1,
+        type=int,
+        help="Size of batch",
+        metavar=''
+    )
+    parser.add_argument('--h1',
+        default=1.0,
+        type=float,
+        help="Height of the first box",
+        metavar=''
+    )
+    parser.add_argument('--h2',
+        default=1.0,
+        type=float,
+        help="Height of the second box",
+        metavar=''
+    )
+    parser.add_argument('--l',
+        default=2.0,
+        type=float,
+        help="Distance between the boxes",
+        metavar=''
+
+    )
     ARGS = parser.parse_args()
 
     build_world(**vars(ARGS))
