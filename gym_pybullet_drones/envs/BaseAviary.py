@@ -166,7 +166,7 @@ class BaseAviary(gym.Env):
             self.CLIENT = p.connect(p.GUI) # p.connect(p.GUI, options="--opengl2")
             for i in [p.COV_ENABLE_RGB_BUFFER_PREVIEW, p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW]:
                 p.configureDebugVisualizer(i, 0, physicsClientId=self.CLIENT)
-            p.resetDebugVisualizerCamera(cameraDistance=3,
+            p.resetDebugVisualizerCamera(cameraDistance=5,
                                          cameraYaw=-30,
                                          cameraPitch=-30,
                                          cameraTargetPosition=[0, 0, 0],
@@ -230,6 +230,17 @@ class BaseAviary(gym.Env):
         self._updateAndStoreKinematicInformation()
         #### Start video recording #################################
         self._startVideoRecording()
+        self.wheel_joints = []
+            
+        # joint 이름으로 ID 찾기
+        wheel_names = ["wheel_front_left_joint", "wheel_front_right_joint", 
+                        "wheel_back_left_joint", "wheel_back_right_joint"]
+            
+        for i in range(p.getNumJoints(self.DRONE_IDS[0])):
+            joint_info = p.getJointInfo(self.DRONE_IDS[0], i)
+            joint_name = joint_info[1].decode('utf-8')
+            if joint_name in wheel_names:
+                self.wheel_joints.append(i)
     
     ################################################################################
 
