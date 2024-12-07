@@ -85,15 +85,15 @@ def build_world(output_dir='../gym_pybullet_drones/assets/world',
     Return:
         world_file_names (string[]): list of output file name with format 'filename_h1_h2_l'
     """
-    max_scale_h = 3
-    max_scale_l = 3
+    min_h, max_h = [1, 1]
+    min_l, max_l = [2, 5]
     world_file_names = []
     
     for i in range(n):
         if rand:
-            h1 = round(random.random() * max_scale_h, 1)
-            h2 = round(random.random() * max_scale_h, 1)
-            l = round(random.random() * max_scale_l, 1)
+            h1 = round(random.random() * (max_h - min_h) + min_h, 1)
+            h2 = round(random.random() * (max_h - min_h) + min_h, 1)
+            l = round(random.random() * (max_l - min_l) + min_l, 1)
         urdf_content = get_urdf(h1, h2, l)
         
         filename = output_dir.split('/')[-1]
