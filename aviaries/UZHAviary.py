@@ -66,6 +66,7 @@ class UZHAviary(BaseRLAviary):
         one_traj=False,
         eval_mode=False,
         log_positions=False,
+        map_name=None,
     ):
 
         self.EPISODE_LEN_SEC = episode_len_sec
@@ -123,6 +124,7 @@ class UZHAviary(BaseRLAviary):
             obs=obs,
             act=act,
             log_positions=log_positions,
+            map_name=map_name,
         )
 
         # Visualisation

@@ -179,6 +179,7 @@ def run(
     waypoint_dist_tol: float = WAYPOINT_DIST_TOL,
     discr_level: float = DEFAULT_DISCR_LEVEL,
     eval_set: set = DEFAULT_EVAL_SET_FOLDER,
+    n: int = 1,
 ):
 
     output_folder = f"{output_folder}/wp_b={waypoint_buffer_size}_k_p={k_p}_k_wp={k_wp}_k_s={k_s}_max_reward_distance={max_reward_distance}_waypoint_dist_tol={waypoint_dist_tol}"
@@ -193,8 +194,9 @@ def run(
     # get the information of the given map
     # now only single determined world (not random) is given
     # it will return ['filename_h1_h2_l']
-    world_names = build_world(h1=1.0, h2=1.0, l=2.0)
-    h1, h2, l = [float(x) for x in world_names[0].split('_')[1:]]  
+    world_name = build_world(h1=1.0, h2=1.0, l=2.0)[0]
+    h1, h2, l = [float(x) for x in world_names[0].split('_')[1:]]
+    l_margin = min(1, l * 0.5)    
     
     trajectories = []
     if False: # Flight mode
@@ -232,6 +234,7 @@ def run(
         use_gui_for_test_env=gui,
         n_env_training=n_envs,
         seed=0,
+        map_name=world_name,
     )
 
     if train:
@@ -391,6 +394,13 @@ if __name__ == "__main__":
         default=WAYPOINT_DIST_TOL,
         type=float,
         help="number of parallel environments",
+        metavar="",
+    )
+    parser.add_argument(
+        "--n",
+        default=False,
+        type=bool,
+        help="The number of map generating",
         metavar="",
     )
     ARGS = parser.parse_args()

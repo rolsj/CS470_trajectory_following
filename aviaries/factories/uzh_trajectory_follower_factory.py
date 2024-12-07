@@ -34,6 +34,7 @@ class TrajectoryFollowerAviaryFactory(BaseFactory):
         seed: int = 0,
         single_traj=True,
         eval_mode=False,
+        map_name=None,
     ) -> None:
         super().__init__()
         self.eval_mode = eval_mode
@@ -43,6 +44,7 @@ class TrajectoryFollowerAviaryFactory(BaseFactory):
         self.seed = seed
         self.use_gui_for_test_env = use_gui_for_test_env
         self.set_config(config)
+        self.MAP = map_name
 
     def set_config(self, config: Configuration):
         initial_xyzs = config.initial_xyzs
@@ -75,6 +77,7 @@ class TrajectoryFollowerAviaryFactory(BaseFactory):
                 max_reward_distance=self.max_reward_distance,
                 waypoint_dist_tol=self.waypoint_dist_tol,
                 one_traj=self.single_traj,
+                map_name=self.MAP,
             ),
             n_envs=self.n_env_training,
             seed=self.seed,
@@ -97,6 +100,7 @@ class TrajectoryFollowerAviaryFactory(BaseFactory):
             one_traj=self.single_traj,
             eval_mode=self.eval_mode,
             log_positions=True if self.eval_mode else False,
+            map_name=self.MAP,
         )
         return eval_env
 
@@ -118,6 +122,7 @@ class TrajectoryFollowerAviaryFactory(BaseFactory):
             one_traj=self.single_traj,
             eval_mode=self.eval_mode,
             log_positions=True if self.eval_mode else False,
+            map_name=self.MAP,
         )
         return test_env
 
@@ -137,5 +142,6 @@ class TrajectoryFollowerAviaryFactory(BaseFactory):
             one_traj=self.single_traj,
             eval_mode=self.eval_mode,
             log_positions=True if self.eval_mode else False,
+            map_name=self.MAP,
         )
         return test_env_nogui

@@ -26,7 +26,8 @@ class BaseRLAviary(BaseAviary):
                  record=False,
                  obs: ObservationType=ObservationType.KIN,
                  act: ActionType=ActionType.RPM,
-                 log_positions = False
+                 log_positions = False,
+                 map_name=None,
                  ):
         """Initialization of a generic single and multi-agent RL environment.
 
@@ -70,6 +71,8 @@ class BaseRLAviary(BaseAviary):
         vision_attributes = True if obs == ObservationType.RGB else False
         self.OBS_TYPE = obs
         self.ACT_TYPE = act
+        
+        self.MAP = map_name
         #### Create integrated controllers #########################
         if act in [ActionType.PID, ActionType.VEL, ActionType.ONE_D_PID, ActionType.ATTITUDE_PID]:
             os.environ['KMP_DUPLICATE_LIB_OK']='True'
@@ -105,12 +108,13 @@ class BaseRLAviary(BaseAviary):
         Overrides BaseAviary's method.
 
         """
-        urdf_path = os.path.join(os.path.dirname(__file__), "../assets/world_1.0_1.0_2.0.urdf")
-        self.obstacle_id = p.loadURDF(urdf_path,
-               #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
-               useFixedBase=True,
-               physicsClientId=self.CLIENT
-               )
+        if self.MAP:
+            urdf_path = os.path.join(os.path.dirname(__file__), f"../assets/{self.MAP}.urdf")
+            self.obstacle_id = p.loadURDF(urdf_path,
+                #p.getQuaternionFromEuler([0, 0, 0]),  # 회전
+                useFixedBase=True,
+                physicsClientId=self.CLIENT
+                )
         pass
 
     ################################################################################
