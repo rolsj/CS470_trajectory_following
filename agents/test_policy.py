@@ -17,13 +17,14 @@ import pybullet as p
 from aviaries.rewards.uzh_trajectory_reward import Rewards
 import xml.etree.ElementTree as ET
 
-def compute_engery(env, action, dt, rpm_prev, k_m):
+def compute_engery(env, action, dt, rpm_prev, wheel_ang_vel, k_m):
     '''
     ** params **
     env: env - test environment
     action: action - test action
     dt: float - time period
     rpm_prev: ndarray - 1 * 4 size rpm
+    wheel_ang_vel: ndarray - 1 * 4 size wheel angular vel
     km: float - thrust coeff.
 
     ** return **
@@ -36,10 +37,10 @@ def compute_engery(env, action, dt, rpm_prev, k_m):
     ang_acc = rpm - rpm_prev
     
     # energy term 1 ( sum{k_m * w^2} * dt )
-    J1 = dt * np.sum(k_m * ang_vel ** 2)
+    J1 = dt * np.sum(k_m * (ang_vel ** 2 + wheel_ang_vel ** 2))
 
     # energy term 2 ( sum{acc * k_m * (acc - k_m * w)} * dt )
-    J2 = dt * np.sum(ang_acc * k_m * (ang_acc - k_m * ang_vel))
+    # J2 = dt * np.sum(ang_acc * k_m * (ang_acc - k_m * ang_vel))
 
     # choose either J1 or J2 as energy
     return 1, rpm
@@ -188,6 +189,7 @@ def test_simple_follower(
                 is_on_ground = current_height <= 0.05
                 next_point_near_ground = next_waypoint_height <= 0.05
                 can_use_ground = is_on_ground and next_point_near_ground
+                wh_ang_vel = np.zeros((1, 4))
                 
                 if can_use_ground:
                     # 드론의 현재 방향 구하기
@@ -256,7 +258,8 @@ def test_simple_follower(
                     
                     # 바퀴 속도 제한
                     base_velocity = np.clip(base_velocity, -10.0, 10.0)
-                    wheel_velocities = np.array([base_velocity] * 4)
+                    wh_vel = np.array([base_velocity] * 4)
+                    wh_ang_vel = wh_vel / 0.015
                     
                     # 바퀴 제어 적용
                     for j, wheel_id in enumerate(test_env.wheel_joints):
@@ -264,7 +267,7 @@ def test_simple_follower(
                             test_env.DRONE_IDS[0],
                             wheel_id,
                             p.VELOCITY_CONTROL,
-                        targetVelocity=wheel_velocities[j],
+                        targetVelocity=wh_vel[j],
                     )
                     p.stepSimulation()
                     
@@ -283,7 +286,12 @@ def test_simple_follower(
                 act2 = action.squeeze()
             
             #if i % test_env.CTRL_FREQ == 0:    
-            energy_cur, rpm_prev = compute_engery(test_env, action, time_period, rpm_prev, k_m)
+            energy_cur, rpm_prev = compute_engery(test_env,
+                                                  action,
+                                                  time_period,
+                                                  rpm_prev,
+                                                  wh_ang_vel,
+                                                  k_m)
             energy_cum += energy_cur
 
             logger.log(
