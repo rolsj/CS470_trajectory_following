@@ -43,7 +43,7 @@ def compute_engery(env, action, dt, rpm_prev, wheel_ang_vel, k_m):
     # J2 = dt * np.sum(ang_acc * k_m * (ang_acc - k_m * ang_vel))
 
     # choose either J1 or J2 as energy
-    return J1, rpm
+    return round(J1, 6), rpm
 
 def test_simple_follower(
     k_p,
