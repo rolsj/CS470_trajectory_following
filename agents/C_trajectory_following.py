@@ -210,7 +210,7 @@ def run(
     if random:
         world_name = build_world(rand=True)[0]
     else:
-        world_name = build_world(h1=1.0, h2=1.0, l=7.0)[0]
+        world_name = build_world(h1=1.0, h2=1.0, l=3.0)[0]
     h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
