@@ -188,26 +188,20 @@ def test_simple_follower(
                 can_use_ground = is_on_ground and next_point_near_ground
                 
                 if can_use_ground:
-                    # 드론의 현재 방향 구하기
-                    orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]  # 쿼터니언
+                    # 드론의 현재 방향과 목표 방향 계산
+                    orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]
                     rotation_mat = p.getMatrixFromQuaternion(orientation)
-                    # 드론의 전진 방향을 x축 기준으로 잡으면 forward_dir는 첫 열 벡터
                     forward_dir = np.array([rotation_mat[0], rotation_mat[3], rotation_mat[6]])
-                    desired_direction_serve = target_position-current_position
-                    desired_direction_xy = np.array([desired_direction_serve[0], desired_direction_serve[1],0])
-                    desired_direction = desired_direction_xy /  np.linalg.norm(desired_direction_xy)
+                    desired_direction_serve = target_position - current_position
+                    desired_direction_xy = np.array([desired_direction_serve[0], desired_direction_serve[1], 0])
+                    desired_direction = desired_direction_xy / np.linalg.norm(desired_direction_xy)
+
                     # 현재 방향과 목표 방향 사이의 각도 계산
-                    cos_angle = np.dot(forward_dir, desired_direction) / (np.linalg.norm(forward_dir) * np.linalg.norm(desired_direction))
+                    cos_angle = np.dot(forward_dir, desired_direction)
                     cos_angle = np.clip(cos_angle, -1.0, 1.0)
                     angle_diff = np.arccos(cos_angle)
-                    # 일정 각도 이상 차이나면 제자리에서 회전으로 방향 맞추기
-                    angle_threshold = np.deg2rad(5)  # 5도 이내면 방향 맞았다고 판단
-                    rotation_speed = 2.0
-                    # cross product를 이용해 회전 방향 결정
-                    # forward_dir를 desired_direction 쪽으로 회전시키기 위한 방향성 계산
-                    cross_dir = np.cross(forward_dir, desired_direction)
-                    rotation_sign = np.sign(cross_dir[2])  # z축 기준 회전 방향
 
+<<<<<<< HEAD
                     steps = 0
                     max_steps = 700  # 최대 시도 스텝
                     """
@@ -222,42 +216,36 @@ def test_simple_follower(
                         #print(angle_diff)
                         left_speed = -rotation_speed * rotation_sign
                         right_speed = rotation_speed * rotation_sign
+=======
+                    # 회전 방향 결정 (cross product로 최단 방향 계산)
+                    cross_product = np.cross(forward_dir, desired_direction)
+                    rotation_direction = np.sign(cross_product[2])  # z축 기준 회전 방향
+>>>>>>> f35bd694278635bf11691e07254b74d03076d98c
 
-                        p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[0], p.VELOCITY_CONTROL, targetVelocity=left_speed)
-                        p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[1], p.VELOCITY_CONTROL, targetVelocity=right_speed)
-                        p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[2], p.VELOCITY_CONTROL, targetVelocity=left_speed)
-                        p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[3], p.VELOCITY_CONTROL, targetVelocity=right_speed)
-                        action = np.zeros(4)
-                        action = action.reshape(1, 4)
-                        obs, reward, terminated, truncated, info = test_env.step(action)
-                        #print("방향전환")
-                        #print(test_env._getDroneStateVector(0)[:3])
-                        steps += 1
-
-                        # 방향 갱신
-                        orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]
-                        rotation_mat = p.getMatrixFromQuaternion(orientation)
-                        forward_dir = np.array([rotation_mat[0], rotation_mat[3], rotation_mat[6]])
-                        cos_angle = np.dot(forward_dir, desired_direction) / (np.linalg.norm(forward_dir) * np.linalg.norm(desired_direction))
-                        cos_angle = np.clip(cos_angle, -1.0, 1.0)
-                        angle_diff = np.arccos(cos_angle)
-
-                    x_error = test_env.trajectory[next_waypoint_idx][0] - current_position[0]
+                    # 기본 전진 속도 설정
+                    x_error = test_env.future_waypoints_relative[test_env.WAYPOINT_BUFFER_SIZE - 1][0] - current_position[0]
                     x_error_sign = np.sign(x_error)
                     x_error_log = x_error_sign * np.log1p(abs(x_error))
                     # 바퀴 속도 제한
-                    base_velocity = np.clip(x_error_log * 50, -50.0, 50.0)
-                    wheel_velocities = np.array([base_velocity] * 4)
+                    base_forward_speed = np.clip(x_error_log * 100, -50.0, 50.0)
                     
-                    # 바퀴 제어 적용
-                    for j, wheel_id in enumerate(test_env.wheel_joints):
-                        p.setJointMotorControl2(
-                            test_env.DRONE_IDS[0],
-                            wheel_id,
-                            p.VELOCITY_CONTROL,
-                        targetVelocity=wheel_velocities[j],
-                    )
+                    # 각도에 따른 회전 강도 계산 (각도가 클수록 회전 강도 증가)
+                    rotation_intensity = np.clip(angle_diff / np.pi, 0, 1) * 20.0
                     
+                    # 왼쪽, 오른쪽 바퀴 속도 차등 적용
+                    if rotation_direction > 0:  # 왼쪽으로 회전
+                        left_speed = base_forward_speed - rotation_intensity
+                        right_speed = base_forward_speed + rotation_intensity
+                    else:  # 오른쪽으로 회전
+                        left_speed = base_forward_speed + rotation_intensity
+                        right_speed = base_forward_speed - rotation_intensity
+
+                    # 바퀴 속도 적용
+                    p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[0], p.VELOCITY_CONTROL, targetVelocity=left_speed)
+                    p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[1], p.VELOCITY_CONTROL, targetVelocity=right_speed)
+                    p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[2], p.VELOCITY_CONTROL, targetVelocity=left_speed)
+                    p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[3], p.VELOCITY_CONTROL, targetVelocity=right_speed)
+
                     action = np.zeros(4)
                     action = action.reshape(1, 4)
                     obs, reward, terminated, truncated, info = test_env.step(action)
