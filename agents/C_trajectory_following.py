@@ -67,7 +67,6 @@ MAX_REWARD_DISTANCE = 0.0
 WAYPOINT_DIST_TOL = 0.05
 DEFAULT_DISCR_LEVEL = 10
 
-
 ####################################
 def save_benchmark(benchmarks: Dict[str, float], file_path: str):
     with open(file_path, "w") as file:
@@ -176,6 +175,9 @@ def determine_strategy(h1, h2, l) -> tuple[int, float]:
         return (1, expected_cost_drive)
 
 def run(
+    h1: float,
+    h2: float,
+    l: float,
     output_folder=OUTPUT_FOLDER,
     gui=GUI,
     timesteps=TIMESTEPS,
@@ -199,7 +201,7 @@ def run(
     print(f"Output folder: {output_folder}")
 
     ##### Use regression models to determine the strategy #####
-    selected_idx, expected_cost = determine_strategy(h1=5, h2=3, l=10)
+    selected_idx, expected_cost = determine_strategy(h1=h1, h2=h2, l=l)
     assert 0 <= selected_idx < 2
 
     ##### Set waypoints depending on the selected strategy #####
@@ -210,11 +212,11 @@ def run(
     if random:
         world_name = build_world(rand=True)[0]
     else:
-        world_name = build_world(h1=1.0, h2=1.0, l=3.0)[0]
+        world_name = build_world(h1=h1, h2=h2, l=l)[0]
     h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
-    if False: # Flight mode
+    if True: # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
         t_traj, init_wp = generate_parabolic_trajectory_aviation(h1,h2,l)
         print("here")
@@ -333,6 +335,9 @@ def run_wrapper(
     discr_level: float = DEFAULT_DISCR_LEVEL,
     eval_set: set = DEFAULT_EVAL_SET_FOLDER,
     rand: bool = RAND,
+    h1: float = 1.,
+    h2: float = 1.,
+    l: float = 3.,
     n: int = 1,
 ):
     for i in range(n):
@@ -354,6 +359,9 @@ def run_wrapper(
             discr_level=discr_level,
             eval_set=eval_set,
             random=rand,
+            h1=h1,
+            h2=h2,
+            l=l
         )
 
 
@@ -472,6 +480,27 @@ if __name__ == "__main__":
         default=1,
         type=int,
         help="The number of map generating",
+        metavar="",
+    )
+    parser.add_argument(
+        "--h1",
+        default=False,
+        type=float,
+        help="Height of the first obs",
+        metavar="",
+    )
+    parser.add_argument(
+        "--h2",
+        default=False,
+        type=float,
+        help="Height of the second obs",
+        metavar="",
+    )
+    parser.add_argument(
+        "--l",
+        default=False,
+        type=float,
+        help="Distance of two obs",
         metavar="",
     )
     ARGS = parser.parse_args()
