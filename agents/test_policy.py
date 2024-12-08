@@ -123,9 +123,13 @@ def test_simple_follower(
     D_COEFF_WHEEL = 10
     last_x_error = 0
     integral_x_error = 0
+
+    direction_fit = False
+    count = 0
     
     # 각 궤적별로 실행
     for trajectory in trajectories:
+        count = count + 1
         test_env.current_waypoint_idx = 0
         test_env.single_traj = trajectory
         test_env.trajectory = test_env.set_trajectory()
@@ -149,7 +153,6 @@ def test_simple_follower(
             ]
             - test_env.trajectory[test_env.current_waypoint_idx]
         )
-
         rpm_prev = np.zeros((1, 4))
         energy_cum = 0.
         energy_cur = 0.
@@ -161,9 +164,16 @@ def test_simple_follower(
             #print(distance_to_target)
             if distance_to_target < 0.15:
                 action = np.zeros_like(action)
-                while not np.allclose(current_position[2], target_position[2], atol=0.05):
+                while not np.allclose(current_position[2], target_position[2], atol=0.036):
                     obs, reward, terminated, truncated, info = test_env.step(action)
                     current_position = test_env._getDroneStateVector(0)[:3]
+                if count == 1:
+                    action = np.zeros(4)
+                    action = action.reshape(1, 4)
+                    for i in range(30):
+                        print(i)
+                        obs, reward, terminated, truncated, info = test_env.step(action)
+                
                 print("Current trajectory completed")
                 break
             else:
@@ -184,10 +194,63 @@ def test_simple_follower(
                 
                 # 지상 이동 가능 여부 판단
                 is_on_ground = current_height <= 0.05
-                next_point_near_ground = next_waypoint_height <= 0.05
-                can_use_ground = is_on_ground and next_point_near_ground
+                next_point_near_ground = test_env.trajectory[next_waypoint_idx][2] == 0
+                curr_point_near_ground = test_env.trajectory[current_projection_idx][2] == 0
+                can_use_ground = is_on_ground and next_point_near_ground and curr_point_near_ground
                 
                 if can_use_ground:
+                    """
+                    if (direction_fit == False) and (count == 2):
+                        # 드론의 현재 방향과 목표 방향 계산
+                        orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]
+                        rotation_mat = p.getMatrixFromQuaternion(orientation)
+                        forward_dir = np.array([rotation_mat[0], rotation_mat[3], rotation_mat[6]])
+                        desired_direction_serve = target_position - current_position
+                        desired_direction_xy = np.array([desired_direction_serve[0], desired_direction_serve[1], 0])
+                        desired_direction = desired_direction_xy / np.linalg.norm(desired_direction_xy)
+
+                        # 현재 방향과 목표 방향 사이의 각도 계산
+                        cos_angle = np.dot(forward_dir, desired_direction)
+                        cos_angle = np.clip(cos_angle, -1.0, 1.0)
+                        angle_diff = np.arccos(cos_angle)
+
+                        ###
+                        angle_threshold = np.deg2rad(5)
+                        rotation_speed = 1.0
+
+                        cross_dir = np.cross(forward_dir, desired_direction)
+                        rotation_sign = np.sign(cross_dir[2])  # z축 기준 회전 방향
+
+                        max_steps = 2000
+                        steps=0
+                        left_speed = -rotation_speed * (rotation_sign)
+                        right_speed = rotation_speed * (rotation_sign)
+                        while angle_diff > angle_threshold: #and steps < max_steps:
+                            print(angle_diff)
+                            print(angle_threshold)
+                            print(angle_diff > angle_threshold)
+                            print(count)
+                            p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[0], p.VELOCITY_CONTROL, targetVelocity=left_speed)
+                            p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[1], p.VELOCITY_CONTROL, targetVelocity=right_speed)
+                            p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[2], p.VELOCITY_CONTROL, targetVelocity=left_speed)
+                            p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[3], p.VELOCITY_CONTROL, targetVelocity=right_speed)
+
+                            action = np.zeros(4)
+                            action = action.reshape(1, 4)
+                            obs, reward, terminated, truncated, info = test_env.step(action)
+                            #print("방향전환")
+                            #print(test_env._getDroneStateVector(0)[:3])
+                            steps += 1
+
+                            # 방향 갱신
+                            orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]
+                            rotation_mat = p.getMatrixFromQuaternion(orientation)
+                            forward_dir = np.array([rotation_mat[0], rotation_mat[3], rotation_mat[6]])
+                            cos_angle = np.dot(forward_dir, desired_direction) / (np.linalg.norm(forward_dir) * np.linalg.norm(desired_direction))
+                            cos_angle = np.clip(cos_angle, -1.0, 1.0)
+                            angle_diff = np.arccos(cos_angle)
+                        direction_fit = True
+                    """
                     # 드론의 현재 방향과 목표 방향 계산
                     orientation = p.getBasePositionAndOrientation(test_env.DRONE_IDS[0])[1]
                     rotation_mat = p.getMatrixFromQuaternion(orientation)
@@ -210,8 +273,15 @@ def test_simple_follower(
                     x_error_sign = np.sign(x_error)
                     x_error_log = x_error_sign * np.log1p(abs(x_error))
                     # 바퀴 속도 제한
-                    base_forward_speed = np.clip(x_error_log * 100, -50.0, 50.0)
-                    
+                    print(test_env.furthest_reached_waypoint_idx)
+                    if test_env.furthest_reached_waypoint_idx == 0:
+                        car_speed_thre = 0
+                    elif test_env.furthest_reached_waypoint_idx == 1:
+                        car_speed_thre = 50
+                    else:
+                        car_speed_thre = 90
+                    base_forward_speed = np.clip(x_error_log * 100, -car_speed_thre, car_speed_thre)
+                    print(base_forward_speed)
                     # 각도에 따른 회전 강도 계산 (각도가 클수록 회전 강도 증가)
                     rotation_intensity = np.clip(angle_diff / np.pi, 0, 1) * 20.0
                     

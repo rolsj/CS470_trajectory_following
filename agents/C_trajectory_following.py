@@ -76,7 +76,7 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, up):
     c = z_start+0.036
     b = -(c/x_land)-a*(x_land)
 
-    num_points = round((z_start*3)+2)
+    num_points = round((z_start*1.5)+3.5)
     # Generate x values
     x_values = np.linspace(0, x_land, num_points)
     
@@ -98,6 +98,8 @@ def generate_parabolic_trajectory(x_point, z_start, x_land, up):
 def find_a_and_b(h1, h2, l, max_height):
     # Define variables
     b = sp.symbols('b', real=True, positive=True)
+    h1 = h1+0.036
+    h2 = h2+0.036
     
     # Equations
     eq1 = (h2 - max_height) * b**2 - (h1 - max_height) * (l - b)**2
@@ -218,9 +220,11 @@ def run(
         trajectories.append(t_traj)
         t_traj2 = None
     else: # Drive mode
-        t_traj, init_wp = generate_parabolic_trajectory(0,h1,1,False)
-        t_traj1, init_wp1 = generate_line_trajectory(l,1)
-        t_traj2, init_wp2 = generate_parabolic_trajectory(l,h2,1,True)  
+        x_la = max(1, 1 + 0.5* (max(h1,h2)-1))
+        print(x_la)
+        t_traj, init_wp = generate_parabolic_trajectory(0,h1,x_la,False)
+        t_traj1, init_wp1 = generate_line_trajectory(l,x_la)
+        t_traj2, init_wp2 = generate_parabolic_trajectory(l,h2,x_la,True)  
         trajectories.append(t_traj)
         trajectories.append(t_traj1)
         trajectories.append(t_traj2)
