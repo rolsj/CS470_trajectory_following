@@ -175,6 +175,7 @@ def determine_strategy(h1, h2, l) -> tuple[int, float]:
         return (1, expected_cost_drive)
 
 def run(
+    mode: str,
     h1: float,
     h2: float,
     l: float,
@@ -216,20 +217,22 @@ def run(
     h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
-    if True: # Flight mode
+    if mode == "flight" or (mode == "auto" and selected_idx == 0): # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
         t_traj, init_wp = generate_parabolic_trajectory_aviation(h1,h2,l)
         print("here")
         print(t_traj)
         trajectories.append(t_traj)
         t_traj2 = None
-    else: # Drive mode
+    elif mode == "drive" or (mode == "auto" and selected_idx == 1): # Drive mode
         t_traj, init_wp = generate_parabolic_trajectory(0,h1,1,False)
         t_traj1, init_wp1 = generate_line_trajectory(l,1)
         t_traj2, init_wp2 = generate_parabolic_trajectory(l,h2,1,True)  
         trajectories.append(t_traj)
         trajectories.append(t_traj1)
         trajectories.append(t_traj2)
+    else:
+        raise Exception(f"Cannot decide drive/flight mode: {mode=}, {selected_idx=}")
 
     config = Configuration(
         action_type=ACT,
@@ -318,6 +321,10 @@ def run(
         )
 
 def run_wrapper(
+    mode: str,
+    h1: float,
+    h2: float,
+    l: float,
     output_folder=OUTPUT_FOLDER,
     gui=GUI,
     timesteps=TIMESTEPS,
@@ -335,13 +342,14 @@ def run_wrapper(
     discr_level: float = DEFAULT_DISCR_LEVEL,
     eval_set: set = DEFAULT_EVAL_SET_FOLDER,
     rand: bool = RAND,
-    h1: float = 1.,
-    h2: float = 1.,
-    l: float = 3.,
     n: int = 1,
 ):
     for i in range(n):
         run(
+            mode=mode,
+            h1=h1,
+            h2=h2,
+            l=l,
             output_folder=output_folder,
             gui=gui,
             timesteps=TIMESTEPS,
@@ -359,9 +367,6 @@ def run_wrapper(
             discr_level=discr_level,
             eval_set=eval_set,
             random=rand,
-            h1=h1,
-            h2=h2,
-            l=l
         )
 
 
@@ -480,6 +485,13 @@ if __name__ == "__main__":
         default=1,
         type=int,
         help="The number of map generating",
+        metavar="",
+    )
+    parser.add_argument(
+        "--mode",
+        default="auto",
+        type=str,
+        help="Mode (auto/drive/flight)",
         metavar="",
     )
     parser.add_argument(
