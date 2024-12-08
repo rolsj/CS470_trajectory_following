@@ -225,9 +225,10 @@ def run(
         trajectories.append(t_traj)
         t_traj2 = None
     elif mode == "drive" or (mode == "auto" and selected_idx == 1): # Drive mode
-        t_traj, init_wp = generate_parabolic_trajectory(0,h1,1,False)
-        t_traj1, init_wp1 = generate_line_trajectory(l,1)
-        t_traj2, init_wp2 = generate_parabolic_trajectory(l,h2,1,True)  
+        x_la = max(1, 1 + 0.5* (max(h1,h2)-1))
+        t_traj, init_wp = generate_parabolic_trajectory(0,h1,x_la,False)
+        t_traj1, init_wp1 = generate_line_trajectory(l,x_la)
+        t_traj2, init_wp2 = generate_parabolic_trajectory(l,h2,x_la,True)  
         trajectories.append(t_traj)
         trajectories.append(t_traj1)
         trajectories.append(t_traj2)

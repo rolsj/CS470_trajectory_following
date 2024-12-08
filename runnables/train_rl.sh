@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python ../agents/C_trajectory_following.py \
-    --gui "True" \
+    --gui "False" \
     --output_folder "./weights" \
     --timesteps 100000 \
     --train "True" \

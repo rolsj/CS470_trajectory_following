@@ -106,9 +106,11 @@ def test_simple_follower(
     obs, info = test_env.reset(seed=42, options={})
     start = time.time()
     
+    count = 0
     # 모든 궤적을 하나로 합치기
     all_waypoints = []
     for trajectory in trajectories:
+        count = count + 1
         all_waypoints.extend(trajectory.wps)
     combined_trajectory = np.array([x.coordinate for x in all_waypoints])
     test_env.combined_trajectory = np.vstack(
@@ -167,6 +169,11 @@ def test_simple_follower(
                 while not np.allclose(current_position[2], target_position[2], atol=0.05):
                     obs, reward, terminated, truncated, info = test_env.step(action)
                     current_position = test_env._getDroneStateVector(0)[:3]
+                if count == 1:
+                    action = np.zeros(4)
+                    action = action.reshape(1, 4)
+                    for i in range(30):
+                        obs, reward, terminated, truncated, info = test_env.step(action)
                 # print("Current trajectory completed")
                 break
             else:
@@ -213,8 +220,16 @@ def test_simple_follower(
                     x_error = test_env.future_waypoints_relative[test_env.WAYPOINT_BUFFER_SIZE - 1][0] - current_position[0]
                     x_error_sign = np.sign(x_error)
                     x_error_log = x_error_sign * np.log1p(abs(x_error))
+
+                    if test_env.furthest_reached_waypoint_idx == 0:
+                        car_speed_thre = 0
+                    elif test_env.furthest_reached_waypoint_idx == 1:
+                        car_speed_thre = 30
+                    else:
+                        car_speed_thre = 50
+
                     # 바퀴 속도 제한
-                    base_forward_speed = np.clip(x_error_log * 100, -50.0, 50.0)
+                    base_forward_speed = np.clip(x_error_log * 100, -car_speed_thre, car_speed_thre)
                     
                     # 각도에 따른 회전 강도 계산 (각도가 클수록 회전 강도 증가)
                     rotation_intensity = np.clip(angle_diff / np.pi, 0, 1) * 20.0
