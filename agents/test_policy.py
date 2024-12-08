@@ -219,7 +219,7 @@ def test_simple_follower(
                     while angle_diff > angle_threshold and steps < max_steps and np.linalg.norm(desired_direction_serve) > 0.9:
                         #time.sleep(5)
                         # 왼 바퀴 음수, 오른 바퀴 양수 속도로 제자리 회전
-                        print(angle_diff)
+                        #print(angle_diff)
                         left_speed = -rotation_speed * rotation_sign
                         right_speed = rotation_speed * rotation_sign
 
@@ -263,7 +263,6 @@ def test_simple_follower(
                     obs, reward, terminated, truncated, info = test_env.step(action)
                 else:
                     # 공중에서는 일반 동작
-                    print(i)
                     obs, reward, terminated, truncated, info = test_env.step(action)
                     if is_on_ground:
                         print("hello Taking off for next waypoint")
