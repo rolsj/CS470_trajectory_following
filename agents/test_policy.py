@@ -37,7 +37,7 @@ def compute_engery(env, action, dt, rpm_prev, wheel_ang_vel, k_m):
     ang_acc = rpm - rpm_prev
     
     # energy term 1 ( sum{k_m * w^2} * dt )
-    J1 = dt * np.sum(k_m * (ang_vel ** 2 + wheel_ang_vel ** 2))
+    J1 = dt * np.sum(k_m * (ang_vel ** 3 + wheel_ang_vel ** 3))
 
     # energy term 2 ( sum{acc * k_m * (acc - k_m * w)} * dt )
     # J2 = dt * np.sum(ang_acc * k_m * (ang_acc - k_m * ang_vel))
@@ -226,7 +226,8 @@ def test_simple_follower(
                     else:  # 오른쪽으로 회전
                         left_speed = base_forward_speed + rotation_intensity
                         right_speed = base_forward_speed - rotation_intensity
-
+                    # angular velocity
+                    wh_ang_vel = np.array([left_speed, right_speed, left_speed, right_speed])
                     # 바퀴 속도 적용
                     p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[0], p.VELOCITY_CONTROL, targetVelocity=left_speed)
                     p.setJointMotorControl2(test_env.DRONE_IDS[0], test_env.wheel_joints[1], p.VELOCITY_CONTROL, targetVelocity=right_speed)

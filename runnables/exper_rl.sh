@@ -15,7 +15,7 @@ echo "h2=$3"
 echo "l=$4"
 
 python3 ../agents/C_trajectory_following.py \
-    --gui "False" \
+    --gui "True" \
     --output_folder "../checkpointed_models" \
     --timesteps 2500000 \
     --train "False" \
