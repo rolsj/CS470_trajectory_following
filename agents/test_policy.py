@@ -43,7 +43,7 @@ def compute_engery(env, action, dt, rpm_prev, wheel_ang_vel, k_m):
     # J2 = dt * np.sum(ang_acc * k_m * (ang_acc - k_m * ang_vel))
 
     # choose either J1 or J2 as energy
-    return 1, rpm
+    return round(J1, 6), rpm
 
 def test_simple_follower(
     k_p,
@@ -238,7 +238,7 @@ def test_simple_follower(
                     obs, reward, terminated, truncated, info = test_env.step(action)
                 else:
                     # 공중에서는 일반 동작
-                    print(i)
+                    #print(i)
                     obs, reward, terminated, truncated, info = test_env.step(action)
                     # if is_on_ground:
                     #     print("hello Taking off for next waypoint")
