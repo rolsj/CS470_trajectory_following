@@ -172,6 +172,9 @@ def determine_strategy(h1, h2, l) -> tuple[int, float]:
         return (1, expected_cost_drive)
 
 def run(
+    h1: float,
+    h2: float,
+    l: float,
     output_folder=OUTPUT_FOLDER,
     gui=GUI,
     timesteps=TIMESTEPS,
@@ -195,7 +198,7 @@ def run(
     print(f"Output folder: {output_folder}")
 
     ##### Use regression models to determine the strategy #####
-    selected_idx, expected_cost = determine_strategy(h1=5, h2=3, l=10)
+    selected_idx, expected_cost = determine_strategy(h1=h1, h2=h2, l=l)
     assert 0 <= selected_idx < 2
 
     ##### Set waypoints depending on the selected strategy #####
@@ -203,7 +206,7 @@ def run(
     # get the information of the given map
     # now only single determined world (not random) is given
     # it will return ['filename_h1_h2_l']
-    world_name = build_world(h1=1.0, h2=1.0, l=5.0)[0]
+    world_name = build_world(h1=h1, h2=h2, l=l)[0]
     h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
@@ -414,6 +417,27 @@ if __name__ == "__main__":
         default=False,
         type=bool,
         help="The number of map generating",
+        metavar="",
+    )
+    parser.add_argument(
+        "--h1",
+        default=False,
+        type=float,
+        help="Height of the first obs",
+        metavar="",
+    )
+    parser.add_argument(
+        "--h2",
+        default=False,
+        type=float,
+        help="Height of the second obs",
+        metavar="",
+    )
+    parser.add_argument(
+        "--l",
+        default=False,
+        type=float,
+        help="Distance of two obs",
         metavar="",
     )
     ARGS = parser.parse_args()
