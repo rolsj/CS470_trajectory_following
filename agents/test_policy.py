@@ -201,26 +201,9 @@ def test_simple_follower(
                     cos_angle = np.clip(cos_angle, -1.0, 1.0)
                     angle_diff = np.arccos(cos_angle)
 
-<<<<<<< HEAD
-                    steps = 0
-                    max_steps = 700  # 최대 시도 스텝
-                    """
-                    print("angle_diff: ", angle_diff)
-                    print("angle_threshold: ", angle_threshold)
-                    print(angle_diff > angle_threshold)
-                    print(steps < max_steps)
-                    """
-                    while angle_diff > angle_threshold and steps < max_steps and np.linalg.norm(desired_direction_serve) > 0.9:
-                        #time.sleep(5)
-                        # 왼 바퀴 음수, 오른 바퀴 양수 속도로 제자리 회전
-                        #print(angle_diff)
-                        left_speed = -rotation_speed * rotation_sign
-                        right_speed = rotation_speed * rotation_sign
-=======
                     # 회전 방향 결정 (cross product로 최단 방향 계산)
                     cross_product = np.cross(forward_dir, desired_direction)
                     rotation_direction = np.sign(cross_product[2])  # z축 기준 회전 방향
->>>>>>> f35bd694278635bf11691e07254b74d03076d98c
 
                     # 기본 전진 속도 설정
                     x_error = test_env.future_waypoints_relative[test_env.WAYPOINT_BUFFER_SIZE - 1][0] - current_position[0]
