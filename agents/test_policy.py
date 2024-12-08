@@ -236,7 +236,6 @@ def test_simple_follower(
                     action = np.zeros(4)
                     action = action.reshape(1, 4)
                     obs, reward, terminated, truncated, info = test_env.step(action)
-                    print("hello Using PID wheel control, velocity:", base_velocity)
                 else:
                     # 공중에서는 일반 동작
                     print(i)

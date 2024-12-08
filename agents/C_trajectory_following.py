@@ -212,11 +212,11 @@ def run(
     if random:
         world_name = build_world(rand=True)[0]
     else:
-        world_name = build_world(h1=1.0, h2=1.0, l=3.0)[0]
+        world_name = build_world(h1=h1, h2=h2, l=l)[0]
     h1, h2, l = [float(x) for x in world_name.split('_')[1:]]
     
     trajectories = []
-    if False: # Flight mode
+    if True: # Flight mode
         #raise Exception("FLIGHT mode trajectory not yet made")
         t_traj, init_wp = generate_parabolic_trajectory_aviation(h1,h2,l)
         print("here")
@@ -335,6 +335,9 @@ def run_wrapper(
     discr_level: float = DEFAULT_DISCR_LEVEL,
     eval_set: set = DEFAULT_EVAL_SET_FOLDER,
     rand: bool = RAND,
+    h1: float = 1.,
+    h2: float = 1.,
+    l: float = 3.,
     n: int = 1,
 ):
     for i in range(n):
@@ -356,6 +359,9 @@ def run_wrapper(
             discr_level=discr_level,
             eval_set=eval_set,
             random=rand,
+            h1=h1,
+            h2=h2,
+            l=l
         )
 
 
