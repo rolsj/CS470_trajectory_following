@@ -111,7 +111,7 @@ cd runnables
 ```bash
 ./runnables/exper_rl.sh [mode] [h1] [h2] [l]
 
-mode = drive or flight // h1, h2, l are float.
+mode = drive or flight or auto // h1, h2, l are float.
 Example 1: ./runnables/exper_rl.sh drive 1 1 8
 A terrain is created with two cliffs, each 1 meters high, and a 8-meter gap between them.
 Currently, h1 and h2 must be the same.
