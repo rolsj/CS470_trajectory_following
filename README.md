@@ -1,131 +1,183 @@
-# Reinforcement Learning for Quadcopter Control
+# Multi-modal UAV for Natural Disaster Rescue
 
-This repository is a fork of [gym-pybullet-drones](https://github.com/utiasDSL/gym-pybullet-drones) and implements a reinforcement learning based control policy inspired by [Penicka et al. [1]](https://rpg.ifi.uzh.ch/docs/RAL_IROS22_Penicka.pdf). 
+A hybrid locomotion UAV system capable of both flying and driving for natural disaster rescue scenarios, based on [RL-pybullets-cf](https://github.com/danielbinschmid/RL-pybullets-cf). (Flight functionality is implemented, and we additionally implemented driving functionality on top of it.)
 
-## Documentation
+## Overview
 
-For documenation and a summary of the results, see our 4-pages [whitepaper](./media/pybullet_drones_whitepaper.pdf).
+This project implements a system that automatically selects between driving and flying modes to maximize drone energy efficiency in u-shaped environment (A terrain with flat ground between two cliffs). The drone is equipped with both propellers and wheels, enabling efficient hybrid locomotion.
 
-## Result
+## Key Features
 
-![RL Control Result](./media/rl_control.gif)
+- **Hybrid Locomotion**: 
+  - Wheeled driving for energy-efficient ground movement
+  - Quadcopter flight
+  - Automatic mode selection based on environment
 
-- The drone can follow arbitrary trajectories. 
-- It is given two next target waypoints as observation. If the two target waypoints are close, it will reach the target slower. 
-- The learned policy corresponds to the obtained result after _slow-phase training_ in [Penicka et al. [1]](https://rpg.ifi.uzh.ch/docs/RAL_IROS22_Penicka.pdf).
+- **Intelligent Control**:
+  - Regression-based mode selection (Flight or drive). It selects a way to reach the target based on cliffs's height and distance between them.
+  - Trajectory following with RL
 
-## Implemented New Features
+- **Environment Analysis**:
+  - U-shaped map structure analysis
+  - Energy-efficient mode prediction (94.4% accuracy)
 
-- Reward implementation of RL policy proposed by [Penicka et al. [1]](https://rpg.ifi.uzh.ch/docs/RAL_IROS22_Penicka.pdf).
-- Attitude control action type. In [gym-pybullet-drones](https://github.com/utiasDSL/gym-pybullet-drones), only motor-level control using PWM signals is implemented. This repository extends the original implementation and adds a wrapper for sending attitude commands (thrust and bodyrates).
-- Random trajectory generation using polynomial minimum snap trajectory generation using [large_scale_traj_optimizer [2]](https://github.com/ZJU-FAST-Lab/large_scale_traj_optimizer) for training and test set generation. Implementation in [trajectories](./trajectories/) subfolder.
-- Scripts for bechmarking the policy by computing basic benchmarks such as mean and max deviation from the target trajectory and time until completion.
+## System Architecture
+
+1. **Hardware Design**
+   - 4 propellers for flight control
+   - 4 wheels for ground locomotion
+   - Integrated control system for mode switching
+
+2. **Control System**
+   - Wheel-Propeller coordination
+   - Trajectory following
+   - Mode transition management
+   - Energy optimization selection between flight and drive
+
+3. **Decision Making**
+   - Environment analysis
+   - Mode selection by regression model
 
 ## Setup
 
-Tested on ArchLinux and Ubuntu. Note that Eigen must be installed on the system. On linux, install via your package manager. E.g. on Ubuntu:
+Tested on ArchLinux, Ubuntu and macOS. Note that Eigen must be installed on the system.
 
-```s
-$ sudo apt-get install libeigen3-dev
+On Ubuntu:
+
+```bash
+sudo apt-get install libeigen3-dev
 ```
 
-It is strongly recommended to use a python virtual environment such as _conda_ or _pyvenv_.
+On macOS:
 
-1. Initialise repository. Repository must be pulled recursively
-
-```s
-$ git clone git@github.com:danielbinschmid/RL-pybullets-cf.git
-$ git submodule --init --recursive
+```bash
+brew install eigen
 ```
 
-2. Initialise virtual environment. Tested with python version 3.10.13. E.g.:
+It is strongly recommended to use a python virtual environment such as conda or pyvenv.
 
-```s
-$ pyenv install 3.10.13
-$ pyenv local 3.10.13
-$ python3 -m venv ./venv
-$ source ./venv/bin/activate
-$ pip3 install --upgrade pip
+### Installation Steps
+
+1. Clone repository (recursively)
+
+```bash
+git clone https://github.com/rolsj/CS470_trajectory_following.git
+git submodule update --init --recursive
+```
+
+2. Setup Python environment (tested with Python 3.10.13)
+
+```bash
+pyenv install 3.10.13
+pyenv local 3.10.13
+python3 -m venv ./venv
+source ./venv/bin/activate
+pip3 install --upgrade pip
 ```
 
 3. Install dependencies and build
 
-```s
-$ pip3 install -e . # if needed, `sudo apt install build-essential` to install `gcc` and build `pybullet`
+```bash
+pip3 install -e .  # Ubuntu users might need: sudo apt install build-essential
 ```
 
 ## Usage
 
-Scripts for training, testing and visualization are provided. 
+Scripts for training, testing and visualization are provided.
 
 ### Training
 
-To train the RL policy from scratch with our implementation, run 
-
-```s
-$ cd runnables
-$ ./train_rl.sh
+```bash
+cd runnables
+./train_rl.sh
 ```
-
-It will produce a folder with the weights. Later, this weights folder can be passed to the visualization and testing scripts.
 
 ### Testing
 
-To run our small benchmark suite, run
-
-```s
-$ cd runnables
-$ ./test_rl.sh
-$ ./test_pid.sh
+```bash
+cd runnables
+./test_rl.sh
+./test_pid.sh
 ```
-
-Out of the box, it will use our pre-trained weights. Each bash script produces a .json file with the benchmarks.
 
 ### Visualization
 
-To just visualize the control policy, run
-
-```s
-$ cd runnables
-$ ./vis_rl.sh
-```
-Out of the box, it will use our pre-trained weights and randomly generated trajectories. 
-
-### Evaluation track generation
-
-To generate a test set with random tracks, run
-
-```s
-$ cd runnables/utils
-$ python gen_eval_tracks.py
+```bash
+cd runnables
+./vis_rl.sh
 ```
 
-### Plot generation
+### Run experiments
+```bash
+./runnables/exper_rl.sh [mode] [h1] [h2] [l]
 
-To generate the plots used in our whitepaper, run
-
-```s
-$ cd runnables
-$ ./generate_plots.sh
+mode = drive or flight // h1, h2, l are float.
+Example 1: ./runnables/exper_rl.sh drive 1.5 1.5 8
+A terrain is created with two cliffs, each 1.5 meters high, and a 7-meter gap between them.
+Currently, h1 and h2 must be the same.
 ```
 
-## Dev
+## Implementation Details
 
-- Autoformatting with _black_.
+The system is implemented using PyBullet physics engine with custom URDF models for the hybrid drone:
 
-### Test
+### 1. Hybrid Locomotion Control
 
-Run all tests from the top folder with
+#### Ground Movement
+- Velocity-based differential wheel control
+- Dynamic speed adjustment based on future waypoints
+- Automatic direction control using cross-product for optimal rotation
+- Logarithmic speed scaling for smooth acceleration/deceleration
+- Integrated ground contact detection for mode switching
 
-```sh
-pytest tests/
-```
+#### Flight Control
+- 4-motor RPM control system
+- Attitude-based control
+- Smooth transition between ground and flight modes
 
-## Common Issues
+### 2. Path Planning & Navigation
 
-- *Mismatching CMakeCache.txt in [trajectories/trajectories_generation](./trajectories/trajectories_generation).* Solution: Remove CMakeCache.txt in build folder of [trajectories/trajectories_generation](./trajectories/trajectories_generation).
+#### Trajectory Generation
+- Parabolic trajectory generation for both modes
+- Flight mode: Curved path
+- Ground mode: Curved paths from cliff to ground. (Different parabolic path is generated based on the cliff.) A direct path connecting takeoff and landing.
+- Dynamic waypoint generation based on terrain
 
-## References 
+#### Mode Selection
+- Energy consumption prediction for each mode
+- Automatic mode switching based on:
+  - Distance to target
+  - cliff's heights
 
-- [1]: Penicka, Robert, et al. [*Learning minimum-time flight in cluttered environments.*](https://rpg.ifi.uzh.ch/docs/RAL_IROS22_Penicka.pdf) IEEE Robotics and Automation Letters 7.3 (2022): 7209-7216.
-- [2]: Burke, Declan, Airlie Chapman, and Iman Shames. [*Generating minimum-snap quadrotor trajectories really fast.*](https://ieeexplore.ieee.org/abstract/document/9341794) 2020 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2020. [github](https://github.com/ZJU-FAST-Lab/large_scale_traj_optimizer)
+### 3. Environment Generation
+
+#### Map Generation
+- Parametric U-shaped terrain generation
+- Configurable cliff heights (h1, h2)
+- Adjustable cliff distance (l)
+- Dynamic cliff URDF model generation
+
+#### Energy Model
+- Mode-specific energy consumption calculation
+- Ground mode: Energy is calculated by multiplying the torque acting on the wheel by its angular velocity.
+- Flight mode: It is calculated using the formula for energy used by the propeller.
+- Real-time energy monitoring and logging
+
+## Results
+
+1. **Mode Selection Efficiency**
+   - Drive mode optimal for longer distances
+   - Flight mode preferred for short distances
+   - 94.4% accuracy in mode prediction
+
+2. **Energy Optimization**
+   - Significant energy savings through mode switching
+   - Optimal path planning for minimal energy consumption
+
+## Team
+- Doheun Kim
+- Minsol Park
+- Doun Lee
+- Seongjun Lee
+
+KAIST
